@@ -1,33 +1,53 @@
 # untitled Club
 
-Protótipo de Listening Session para audições presenciais, avaliação de faixas e visão administrativa.
+Protótipo de Listening Session: interface de audição, painel administrativo e controle de liberação de faixas.
 
 ## Estado atual
 
-O repositório contém a interface estática do protótipo. **Ainda não está pronto para coletar avaliações reais**: as ações e os dados da interface são demonstrativos e não estão conectados ao banco Supabase. O painel Admin também é apenas uma visualização de protótipo, não um sistema de autorização.
+- A sessão compartilhada e seis faixas estão cadastradas no Supabase.
+- O estado da sessão, a faixa liberada e o cronômetro são lidos/escritos pelo servidor Cloudflare Pages Functions, usando o Supabase como fonte compartilhada.
+- O navegador não recebe a chave `service_role`; ela é usada somente como Secret do servidor.
+- **As avaliações individuais, participantes, relatórios e exportações ainda são demonstrativos e não são persistidos no Supabase.** Não use ainda para coletar avaliações reais.
 
-O esquema inicial do Supabase já foi criado separadamente. A próxima etapa de produto é implementar uma API segura e validar autenticação, permissões e gravação de avaliações antes de usar com participantes reais.
+## Arquitetura
 
-## Arquivos
+- `index.html` — interface.
+- `functions/api/session-state.js` — leitura do estado e comandos do cronômetro/sessão.
+- `functions/api/admin-login.js` — login administrativo.
+- `functions/api/_shared.js` — acesso privado ao Supabase e validação do cookie Admin.
+- `supabase/migrations/` — esquema, sessão inicial e endurecimento de segurança.
+- `_routes.json` — restringe as Pages Functions aos endpoints `/api/*`.
 
-- `index.html` — interface do participante e painel administrativo.
-- `README.md` — status do projeto e instruções de publicação.
+O cronômetro é baseado em `timer_deadline_at`, e não no relógio local de cada navegador. Os dispositivos consultam `/api/session-state` periodicamente e recalculam o tempo a partir do mesmo prazo.
 
-## Publicar no Cloudflare Pages com deploy automático
+## Configurar os Secrets do Cloudflare (obrigatório)
 
-1. Abra o painel [Cloudflare](https://dash.cloudflare.com/) e entre em **Workers & Pages**.
-2. Escolha **Create application → Pages → Connect to Git**.
-3. Conecte/autorize o GitHub e selecione `Mokimokia/untitled-club`.
-4. Use a branch de produção `main`.
-5. Selecione **None / No framework**. Deixe **Build command** vazio e configure **Build output directory** como `.` (a página `index.html` está na raiz).
-6. Clique em **Save and Deploy**.
+Abra [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → projeto **untitled-club** → **Settings** → **Variables and Secrets**. Configure o ambiente **Production** e salve:
 
-Depois dessa integração, o Cloudflare Pages publica automaticamente novos commits da branch de produção e pode criar previews para outras branches. Consulte a [documentação oficial de Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/).
+| Nome | Tipo | Valor |
+| --- | --- | --- |
+| `SUPABASE_URL` | Variable (texto) | `https://ufwdxerumssnwcbduprt.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret (Encrypt)** | Chave `service_role` do projeto Supabase — nunca colocar no HTML ou GitHub |
+| `ADMIN_PASSWORD` | **Secret (Encrypt)** | Uma senha administrativa forte, escolhida por você |
 
-## Antes de usar com dados reais
+Para obter a chave `service_role`, abra o projeto no [Supabase Dashboard](https://supabase.com/dashboard/project/ufwdxerumssnwcbduprt) e localize **Project Settings → API Keys** (a chave legada de serviço). Cole somente no Secret do Cloudflare. Não a envie neste chat nem a grave no repositório.
 
-- Implementar endpoints de servidor para acessar o Supabase.
-- Definir autenticação de administradores e participantes e regras de autorização por sessão.
-- Validar a gravação de avaliações, comentários e estado do cronômetro.
-- Configurar segredos no ambiente do servidor Cloudflare; nunca inserir a chave `service_role` do Supabase em `index.html) ou em código enviado ao navegador.
-- Testar fluxo completo e privacidade antes de uma sessão real.
+Guia oficial: [Cloudflare Pages variables and secrets](https://developers.cloudflare.com/pages/functions/bindings/).
+
+Depois de salvar as variáveis e Secrets, faça um novo deploy da branch `main` (ou use **Retry deployment** no último deploy). Os Secrets devem existir antes do deploy. Acesse `/api/session-state` no site; a resposta deve mostrar o estado JSON da sessão em vez do erro de configuração.
+
+Ao clicar em **Admin**, será solicitada a senha definida em `ADMIN_PASSWORD`. O cookie é assinado no servidor, marcado HttpOnly/Secure e expira em 12 horas.
+
+## Sincronização
+
+- **Liberar faixa:** ativa a faixa selecionada e reinicia o tempo para 03:00, pausado.
+- **Iniciar/Pausar:** atualiza o estado compartilhado para todos os dispositivos.
+- **+ 1 minuto:** aumenta o tempo compartilhado.
+- **Encerrar/Reabrir sessão:** sincroniza o estado e reinicia em 03:00 ao reabrir.
+- As Pages Functions retornam o estado e o cliente faz polling aproximadamente a cada 1,5 segundo; a tela recalcula o cronômetro usando o prazo salvo no banco.
+
+## Deploy automático
+
+O Cloudflare Pages deve estar conectado ao repositório `Mokimokia/untitled-club`, branch `main`. Como os arquivos estáticos estão na raiz, use **None / No framework**, sem comando de build e diretório de saída `.`. Cada commit em `main` inicia uma nova publicação.
+
+Documentação: [Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/) e [Pages Functions routing](https://developers.cloudflare.com/pages/functions/routing/).
