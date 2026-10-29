@@ -1,4 +1,4 @@
-import { db, HttpError, json, hasAdminSession, loadState, readSession, requireSameOrigin } from "./_shared.js";
+import { db, HttpError, json, hasAdminSession, loadState, readSession, requireSameOrigin } from "./_middleware.js";
 
 async function updateSession(env, session, patch) {
   await db(env, "sessions?id=eq." + encodeURIComponent(session.id), {
