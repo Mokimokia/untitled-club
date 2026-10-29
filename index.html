@@ -138,6 +138,7 @@ let syncBridgeSignature = '';
 let syncBridgeParticipantId = null;
 let syncBridgeRatingSignature = '';
 let syncBridgeNoticeShown = false;
+let syncBridgeWasTimedOut = null;
 const syncBridgeScoreFields = ['initial_impression','melody','composition','production','vocal_performance','originality','emotional_connection','commercial_potential','replay_memorability','overall'];
 const syncBridgeOriginalUpdateTrack = updateTrack;
 updateTrack = function() {
@@ -199,6 +200,11 @@ function syncBridgeClock() {
   }
   timerRunning = Boolean(session.timer_running) && seconds > 0;
   syncTimerUI();
+  const timedOut = Boolean(session.active_track_id) && seconds <= 0;
+  if (syncBridgeWasTimedOut !== timedOut) {
+    syncBridgeWasTimedOut = timedOut;
+    if (mode !== 'admin') updateTrack();
+  }
 }
 function syncBridgeRefreshTrackSelectors() {
   for (const id of ['adminTrackSelect','reportTrack']) {
@@ -258,7 +264,7 @@ function syncBridgeApply(state) {
     const index = Number(t.position)-1;
     if (t.status === 'closed') closedTracks.add(index);
   });
-  syncBridgeRefreshTrackSelectors();
+  if (structureChanged) syncBridgeRefreshTrackSelectors();
   if ($('statusPill')) $('statusPill').textContent = sessionOpen ? '● Sessão sincronizada' : '● Sessão encerrada';
   if ($('statusPill')) $('statusPill').title = 'Estado compartilhado via Supabase';
   if ($('sessionStateText')) {
@@ -273,7 +279,7 @@ function syncBridgeApply(state) {
     syncBridgeNoticeShown = true;
   }
   syncBridgeClock();
-  updateTrack();
+  if (structureChanged && mode !== 'admin') updateTrack();
   if (state.admin && syncBridgeAdminAuthenticated) syncBridgeAdminData = state.admin;
   if (structureChanged && mode === 'admin') {
     renderAdmin();
