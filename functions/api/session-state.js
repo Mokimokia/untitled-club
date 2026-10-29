@@ -27,6 +27,7 @@ function importScore(value, label) {
 async function replaceSessionData(env, session, data) {
   return db(env, "rpc/replace_listening_session", {
     method: "POST",
+    headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
       p_session_id: session.id,
       p_session_name: data.name || "Untitled Club",
