@@ -1,0 +1,5 @@
+# Local Cloudflare Pages secrets
+.dev.vars*
+.env*
+!.env.example
+.wrangler/
