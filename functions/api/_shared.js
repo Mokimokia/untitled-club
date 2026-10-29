@@ -35,7 +35,7 @@ function config(env) {
       "Sincronização ainda não configurada. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY nos Secrets do Cloudflare Pages."
     );
   }
-  return { base: url.replace(/\\/$/, "") + "/rest/v1", key };
+  return { base: (url.endsWith("/") ? url.slice(0, -1) : url) + "/rest/v1", key };
 }
 
 export async function db(env, path, options = {}) {
@@ -119,7 +119,7 @@ export async function loadState(env) {
 function toBase64Url(bytes) {
   let binary = "";
   for (const byte of new Uint8Array(bytes)) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  return btoa(binary).replaceAll("=", "").replaceAll("+", "-").replaceAll("/", "_");
 }
 
 function fromBase64Url(value) {
@@ -155,7 +155,7 @@ export async function hasAdminSession(request, env) {
   if (dot < 1) return false;
   const expiry = value.slice(0, dot);
   const sigText = value.slice(dot + 1);
-  if (!/^\\d+$/.test(expiry) || Number(expiry) <= Date.now() || !sigText) return false;
+  if (!expiry || [...expiry].some(char => char < "0" || char > "9") || Number(expiry) <= Date.now() || !sigText) return false;
   try {
     const key = await hmacKey(env.ADMIN_PASSWORD, ["verify"]);
     return await crypto.subtle.verify(
