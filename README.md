@@ -7,7 +7,8 @@ Listening Session para audições presenciais. A interface usa Cloudflare Pages 
 - Entrada de participantes por nome; se o Admin configurou um código de entrada, ele é validado no servidor.
 - Registro de participantes, rascunhos e avaliações enviadas no Supabase.
 - Cronômetro sincronizado entre dispositivos; **liberar uma faixa inicia automaticamente a contagem de 03:00**.
-- Painel Admin com participantes e resultados reais.
+- Painel Admin com participantes e resultados reais; os contadores, status, ranking e médias são derivados dos dados da sessão, sem amostras fictícias.
+- Escala de avaliação de 0 a 10 com incrementos de 0,5 estrela.
 - Adicionar faixas, renomear, classificar como referência/inédita, liberar e encerrar avaliação.
 - Configurar código de entrada no Admin.
 - **Salvar dados da sessão** baixa backup JSON; **Importar dados de sessão** restaura esse formato.
