@@ -123,7 +123,174 @@ $('resetSession').onclick = reopenSession;
 const reopenSessionButton=document.createElement('button'); reopenSessionButton.id='reopenSession'; reopenSessionButton.className='btn'; reopenSessionButton.textContent='Reabrir sessão'; const sessionActions=$('endSession')?.parentElement; if(sessionActions && !$('reopenSession')) sessionActions.insertBefore(reopenSessionButton,$('endSession')); if($('reopenSession')) $('reopenSession').onclick=reopenSession;
 function displayClock(n){return String(Math.floor(Math.max(0,n)/60)).padStart(2,'0')+':'+String(Math.max(0,n)%60).padStart(2,'0')}
 function syncTimerUI(){const clock=displayClock(seconds);if($('timer'))$('timer').textContent=clock;if($('participantTimer'))$('participantTimer').textContent=clock;if($('participantTimerStatus'))$('participantTimerStatus').textContent=!sessionOpen?'Sessão encerrada':seconds<=0?'Tempo esgotado — aguarde a próxima orientação':timerRunning?'Avaliação em andamento — acompanhe o tempo':'Contagem pausada; aguardando o administrador';if($('participantTimerProgress'))$('participantTimerProgress').style.width=(timerInitialSeconds?Math.max(0,Math.min(100,seconds/timerInitialSeconds*100)):0)+'%';if(seconds<=0){timerRunning=false;if($('submitRating'))$('submitRating').disabled=true}}
-const timerControls=document.createElement('div');timerControls.className='actions';timerControls.innerHTML='<button class="btn primary" id="startTimer">Iniciar contagem</button><button class="btn" id="pauseTimer">Pausar contagem</button>';const timerLabel=$('timer')?.parentElement;if(timerLabel)timerLabel.parentElement.insertBefore(timerControls,timerLabel.nextSibling);$('startTimer').onclick=()=>{if(!sessionOpen)return;timerRunning=true;$('adminNotice').textContent='Contagem iniciada para a avaliação presencial.';syncTimerUI()};$('pauseTimer').onclick=()=>{timerRunning=false;syncTimerUI()};$('addMinute').onclick=()=>{seconds+=60;timerInitialSeconds=Math.max(timerInitialSeconds,seconds);syncTimerUI();$('adminNotice').textContent='Um minuto adicionado ao tempo de avaliação.'};setInterval(()=>{if(timerRunning&&sessionOpen&&seconds>0){seconds--;syncTimerUI()}},1000);
+const timerControls=document.createElement('div');timerControls.className='actions';timerControls.innerHTML='<button class="btn primary" id="startTimer">Iniciar contagem</button><button class="btn" id="pauseTimer">Pausar contagem</button>';const timerLabel=$('timer')?.parentElement;if(timerLabel)timerLabel.parentElement.insertBefore(timerControls,timerLabel.nextSibling);$('startTimer').onclick=()=>{if(!sessionOpen)return;timerRunning=true;$('adminNotice').textContent='Contagem iniciada para a avaliação presencial.';syncTimerUI()};$('pauseTimer').onclick=()=>{timerRunning=false;syncTimerUI()};$('addMinute').onclick=()=>{seconds+=60;timerInitialSeconds=Math.max(timerInitialSeconds,seconds);syncTimerUI();$('adminNotice').textContent='Um minuto adicionado ao tempo de avaliação.'};setInterval(()=>{if(!window.sharedTimerMode&&timerRunning&&sessionOpen&&seconds>0){seconds--;syncTimerUI()}},1000);
+
+/* Supabase shared session bridge: all session controls are server-authoritative. */
+window.sharedTimerMode = true;
+let syncBridgeState = null;
+let syncBridgeOffsetMs = 0;
+let syncBridgeBusy = false;
+let syncBridgeHasLoaded = false;
+let syncBridgeAdminAuthenticated = false;
+let syncBridgeNoticeShown = false;
+
+function syncBridgeNotice(message) {
+  if ($('adminNotice')) $('adminNotice').textContent = message;
+}
+function syncBridgeClock() {
+  if (!syncBridgeState) return;
+  const s = syncBridgeState.session;
+  if (s.timer_running && s.timer_deadline_at) {
+    seconds = Math.max(0, Math.ceil((Date.parse(s.timer_deadline_at) - (Date.now() + syncBridgeOffsetMs)) / 1000));
+    if (seconds <= 0) timerRunning = false;
+  } else {
+    seconds = Math.max(0, Number(syncBridgeState.remaining_seconds) || 0);
+  }
+  timerRunning = Boolean(s.timer_running) && seconds > 0;
+  syncTimerUI();
+}
+function syncBridgeApply(state) {
+  if (!state || !state.session || !Array.isArray(state.tracks)) return;
+  const serverTime = Date.parse(state.server_now || '');
+  if (Number.isFinite(serverTime)) syncBridgeOffsetMs = serverTime - Date.now();
+  syncBridgeState = state;
+  syncBridgeHasLoaded = true;
+  sessionOpen = state.session.status === 'open';
+  timerRunning = Boolean(state.session.timer_running);
+  seconds = Math.max(0, Number(state.remaining_seconds) || 0);
+  timerInitialSeconds = Math.max(1, Number(state.session.timer_duration_seconds) || 180);
+
+  closedTracks.clear();
+  state.tracks.forEach(t => {
+    const index = Number(t.position) - 1;
+    if (!Number.isInteger(index) || index < 0 || index >= tracks.length) return;
+    tracks[index].name = t.name;
+    tracks[index].type = t.track_type === 'reference' ? 'Referência' : 'Inédita';
+    if (t.status === 'closed') closedTracks.add(index);
+    const opt = $('adminTrackSelect')?.querySelector('option[value="' + index + '"]');
+    if (opt) opt.textContent = t.name;
+  });
+
+  const active = state.active_track;
+  activeReleasedTrack = active ? Number(active.position) - 1 : null;
+  releasedTrack = activeReleasedTrack;
+  if (activeReleasedTrack !== null && activeReleasedTrack >= 0 && activeReleasedTrack < tracks.length) {
+    current = activeReleasedTrack;
+  }
+  if ($('statusPill')) {
+    $('statusPill').textContent = sessionOpen ? '● Sessão sincronizada' : '● Sessão encerrada';
+  }
+  if ($('sessionStateText')) {
+    $('sessionStateText').textContent = sessionOpen ? (active ? 'Faixa liberada' : 'Aguardando faixa') : 'Encerrada';
+  }
+  if ($('adminTrackName')) {
+    const selected = Math.max(0, Math.min(tracks.length - 1, Number($('adminTrackSelect')?.value ?? current)));
+    $('adminTrackName').textContent = active ? active.name : tracks[selected].name;
+  }
+  if ($('adminNotice') && !syncBridgeNoticeShown) {
+    $('adminNotice').textContent = 'Sessão e cronômetro sincronizados pelo Supabase entre os dispositivos.';
+    syncBridgeNoticeShown = true;
+  }
+  syncBridgeClock();
+  updateTrack();
+}
+async function syncBridgeRequest(url, options = {}) {
+  const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin', ...options });
+  let payload = {};
+  try { payload = await response.json(); } catch { payload = {}; }
+  if (!response.ok) {
+    const error = new Error(payload.error || ('Falha HTTP ' + response.status));
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+async function syncBridgePoll() {
+  if (syncBridgeBusy) return;
+  syncBridgeBusy = true;
+  try {
+    const state = await syncBridgeRequest('/api/session-state');
+    syncBridgeApply(state);
+    if ($('statusPill')) $('statusPill').title = 'Estado sincronizado via Supabase';
+  } catch (error) {
+    if ($('statusPill')) {
+      $('statusPill').textContent = '● Sincronização pendente';
+      $('statusPill').title = error.message;
+    }
+    if (!syncBridgeHasLoaded && $('trackArtist')) {
+      $('trackArtist').textContent = 'A sincronização compartilhada está aguardando a configuração dos Secrets no Cloudflare Pages.';
+    }
+    if (syncBridgeAdminAuthenticated && $('adminNotice')) syncBridgeNotice(error.message);
+  } finally {
+    syncBridgeBusy = false;
+  }
+}
+async function syncBridgeAction(action, body = {}) {
+  if (!syncBridgeAdminAuthenticated) {
+    syncBridgeNotice('Entre no modo Admin para controlar a sessão compartilhada.');
+    return;
+  }
+  try {
+    const state = await syncBridgeRequest('/api/session-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...body })
+    });
+    syncBridgeApply(state);
+    const selected = body.position ? tracks[Number(body.position) - 1]?.name : null;
+    const messages = {
+      release: (selected || 'Faixa') + ' liberada. Cronômetro sincronizado em 03:00 e pausado.',
+      close_track: (selected || 'Faixa') + ' encerrada para avaliação.',
+      end: 'Sessão encerrada para todos os dispositivos.',
+      reopen: 'Sessão reaberta. Libere uma faixa para começar.',
+      start: 'Contagem iniciada em todos os dispositivos.',
+      pause: 'Contagem pausada em todos os dispositivos.',
+      add_minute: 'Um minuto acrescentado ao cronômetro compartilhado.'
+    };
+    syncBridgeNotice(messages[action] || 'Sessão atualizada.');
+  } catch (error) {
+    if (error.status === 401) {
+      syncBridgeAdminAuthenticated = false;
+      alert('Sua sessão de administrador expirou. Entre novamente no modo Admin.');
+      switchMode('artist');
+    }
+    syncBridgeNotice(error.message);
+  }
+}
+$('adminMode').onclick = async () => {
+  if (syncBridgeAdminAuthenticated) {
+    switchMode('admin');
+    return;
+  }
+  const password = window.prompt('Digite a senha administrativa configurada nos Secrets do Cloudflare Pages:');
+  if (!password) return;
+  try {
+    await syncBridgeRequest('/api/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    syncBridgeAdminAuthenticated = true;
+    switchMode('admin');
+    await syncBridgePoll();
+    syncBridgeNotice('Admin autenticado. Os controles agora atualizam a sessão compartilhada.');
+  } catch (error) {
+    alert(error.message);
+  }
+};
+$('artistMode').onclick = () => switchMode('artist');
+if ($('releaseTrack')) $('releaseTrack').onclick = () => syncBridgeAction('release', { position: Number($('adminTrackSelect')?.value ?? 0) + 1 });
+if ($('closeTrack')) $('closeTrack').onclick = () => syncBridgeAction('close_track', { position: Number($('adminTrackSelect')?.value ?? 0) + 1 });
+if ($('endSession')) $('endSession').onclick = () => syncBridgeAction('end');
+if ($('resetSession')) $('resetSession').onclick = () => syncBridgeAction('reopen');
+if ($('reopenSession')) $('reopenSession').onclick = () => syncBridgeAction('reopen');
+if ($('startTimer')) $('startTimer').onclick = () => syncBridgeAction('start');
+if ($('pauseTimer')) $('pauseTimer').onclick = () => syncBridgeAction('pause');
+if ($('addMinute')) $('addMinute').onclick = () => syncBridgeAction('add_minute');
+setInterval(syncBridgeClock, 250);
+setInterval(syncBridgePoll, 1500);
+syncBridgePoll();
+
 updateTrack();renderAdmin();renderParticipants();syncTimerUI();
 </script>
 <!--sites-preview-theme:start-->
