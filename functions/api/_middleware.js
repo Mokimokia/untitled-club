@@ -46,7 +46,7 @@ export async function db(env, path, options = {}) {
   headers.set("Accept", "application/json");
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
-    headers.set("Prefer", "return=representation");
+    headers.set("Prefer", headers.get("Prefer") || "return=representation");
   }
   const response = await fetch(base + "/" + path, { ...options, headers });
   const text = await response.text();
@@ -64,7 +64,7 @@ export async function readSession(env) {
   const rows = await db(
     env,
     "sessions?code_hash=eq." + encodeURIComponent(SESSION_KEY) +
-      "&select=id,name,status,active_track_id,timer_duration_seconds,timer_deadline_at,timer_running,updated_at&limit=1"
+      "&select=id,name,code_hash,entry_code_hash,status,active_track_id,timer_duration_seconds,timer_deadline_at,timer_running,updated_at&limit=1"
   );
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new HttpError(503, "A sessão compartilhada não foi inicializada no Supabase.");
@@ -107,6 +107,7 @@ export async function loadState(env) {
       timer_duration_seconds: Number(session.timer_duration_seconds) || 0,
       timer_deadline_at: session.timer_deadline_at,
       timer_running: Boolean(session.timer_running),
+      has_entry_code: Boolean(session.entry_code_hash),
       updated_at: session.updated_at,
     },
     tracks: Array.isArray(tracks) ? tracks : [],
@@ -114,6 +115,11 @@ export async function loadState(env) {
     remaining_seconds: remaining,
     server_now: new Date().toISOString(),
   };
+}
+
+export async function sha256Hex(value) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function toBase64Url(bytes) {
@@ -139,18 +145,26 @@ async function hmacKey(password, usage) {
   );
 }
 
+async function signValue(secret, value) {
+  const key = await hmacKey(secret, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return toBase64Url(signature);
+}
+
 export async function adminCookieValue(password, expiry) {
-  const key = await hmacKey(password, ["sign"]);
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("untitled-club-admin:" + expiry));
-  return String(expiry) + "." + toBase64Url(signature);
+  return String(expiry) + "." + await signValue(password, "untitled-club-admin:" + expiry);
+}
+
+function getCookie(request, name) {
+  const rawCookie = request.headers.get("Cookie") || "";
+  const part = rawCookie.split(";").map(v => v.trim()).find(v => v.startsWith(name + "="));
+  return part ? part.slice(name.length + 1) : null;
 }
 
 export async function hasAdminSession(request, env) {
   if (!env.ADMIN_PASSWORD) return false;
-  const rawCookie = request.headers.get("Cookie") || "";
-  const part = rawCookie.split(";").map(v => v.trim()).find(v => v.startsWith("untitled_club_admin="));
-  if (!part) return false;
-  const value = part.slice("untitled_club_admin=".length);
+  const value = getCookie(request, "untitled_club_admin");
+  if (!value) return false;
   const dot = value.indexOf(".");
   if (dot < 1) return false;
   const expiry = value.slice(0, dot);
@@ -166,6 +180,38 @@ export async function hasAdminSession(request, env) {
     );
   } catch {
     return false;
+  }
+}
+
+export async function participantCookieValue(secret, participantId, expiry) {
+  const payload = toBase64Url(new TextEncoder().encode(JSON.stringify({ sub: participantId, exp: expiry })));
+  return payload + "." + await signValue(secret, "untitled-club-participant:" + payload);
+}
+
+export async function participantClaims(request, env) {
+  const secret = env.ADMIN_PASSWORD;
+  if (!secret) return null;
+  const value = getCookie(request, "untitled_club_participant");
+  if (!value) return null;
+  const dot = value.indexOf(".");
+  if (dot < 1) return null;
+  const payload = value.slice(0, dot);
+  const sigText = value.slice(dot + 1);
+  if (!sigText) return null;
+  try {
+    const key = await hmacKey(secret, ["verify"]);
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      fromBase64Url(sigText),
+      new TextEncoder().encode("untitled-club-participant:" + payload)
+    );
+    if (!ok) return null;
+    const claims = JSON.parse(new TextDecoder().decode(fromBase64Url(payload)));
+    if (typeof claims.sub !== "string" || !Number.isFinite(claims.exp) || claims.exp <= Date.now()) return null;
+    return claims;
+  } catch {
+    return null;
   }
 }
 
