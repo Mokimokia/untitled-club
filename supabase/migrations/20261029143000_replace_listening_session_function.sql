@@ -51,6 +51,14 @@ BEGIN
   FROM pg_catalog.jsonb_array_elements(p_tracks) AS item
   ORDER BY (item->>'position')::integer;
 
+  UPDATE public.sessions
+  SET active_track_id = (
+    SELECT t.id FROM public.tracks t
+    WHERE t.session_id = p_session_id AND t.status = 'released'
+    ORDER BY t.position LIMIT 1
+  )
+  WHERE id = p_session_id;
+
   INSERT INTO public.participants (id, session_id, display_name, token_hash, joined_at, last_seen_at)
   SELECT
     (item->>'id')::uuid,
