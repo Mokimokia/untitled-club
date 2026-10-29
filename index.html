@@ -43,7 +43,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 <section id="page-listen">
 <div class="card"><div class="track-head"><div class="cover">✳</div><div class="track-meta"><div class="eyebrow" id="trackType">SESSÃO PRESENCIAL</div><h2 id="trackName">Aguardando liberação</h2><div class="muted small" id="trackArtist">O DJ conduz a audição. Avalie enquanto a faixa está tocando.</div></div><span class="tag" id="trackCounter">AGUARDANDO</span></div><div class="notice" style="margin-top:20px"><strong>Escuta presencial</strong><br>O áudio é conduzido pelo DJ. Use esta página apenas para registrar sua avaliação.</div><div style="margin-top:18px;padding:20px;border:2px solid #3bada7;background:#d9eee0;text-align:center;border-radius:6px"><div class="eyebrow" style="color:#245a54!important">TEMPO RESTANTE PARA AVALIAR</div><div id="participantTimer" style="font-size:clamp(42px,8vw,68px);font-weight:900;letter-spacing:-.06em;color:#4a241c;font-variant-numeric:tabular-nums;margin:8px 0">03:00</div><div id="participantTimerStatus" style="font-size:12px;color:#245a54">Aguardando o administrador iniciar</div><div class="progressline" style="height:7px;background:#b6d8ca;margin-top:15px"><span id="participantTimerProgress" style="width:100%;background:#3bada7"></span></div></div></div>
 <div id="ratingArea"><div class="card"><div class="eyebrow">Sua avaliação</div><h2 style="margin-top:7px">O que você sentiu ao ouvir?</h2><p class="muted small">Dê uma nota para cada critério. Você pode usar meia estrela. O Overall aparece por último.</p><div class="progressline"><span id="ratingProgress" style="width:10%"></span></div><div class="small muted" id="ratingCount">0 de 10 critérios preenchidos</div></div><div class="criteria" id="criteriaList"></div><div class="card"><h3>Comentários (opcional)</h3><label class="small muted" for="liked">O que mais funcionou?</label><textarea id="liked" class="field" rows="2" placeholder="Melodia, letra, interpretação..."></textarea><label class="small muted" for="improve" style="margin-top:12px">O que poderia melhorar?</label><textarea id="improve" class="field" rows="2" placeholder="Sugestões construtivas..."></textarea><div class="actions"><button class="btn" id="saveDraft">Salvar rascunho</button><button class="btn primary" id="submitRating">Enviar avaliação →</button></div><div id="saveMessage" class="footnote" aria-live="polite"></div></div></div>
-<div id="submittedArea" class="card hidden"><div class="empty"><div class="bigcheck">✓</div><h2>Avaliação registrada</h2><p class="muted">Obrigado por ouvir com atenção. Você pode seguir para a próxima faixa.</p><button class="btn primary" id="continueBtn">Próxima música →</button></div></div>
+<div id="submittedArea" class="card hidden"><div class="empty"><div class="bigcheck">✓</div><h2>Avaliação registrada</h2><p class="muted">Obrigado por ouvir com atenção. Você pode seguir para a próxima faixa.</p></div></div>
 </section>
 <section id="page-instructions" class="hidden"><div class="card"><div class="eyebrow">Antes de começar</div><h2>Como funciona?</h2><p class="muted">A ideia é capturar sua reação individual, sem influência das notas dos outros participantes.</p><div class="person"><span>01 · Ouça a faixa completa</span><span class="tag">Escuta</span></div><div class="person"><span>02 · Avalie os nove critérios</span><span class="tag">0–10</span></div><div class="person"><span>03 · Dê seu Overall por último</span><span class="tag">Obrigatório</span></div><div class="person"><span>04 · Envie antes do encerramento</span><span class="tag">Privado</span></div><div class="notice" style="margin-top:18px">As três primeiras faixas são referências para calibrar a percepção do grupo. Elas aparecem no ranking identificadas como referências.</div><button class="btn primary" style="margin-top:18px" data-goto="listen">Começar avaliação →</button></div></section>
 <section id="page-artistDone" class="hidden"><div class="card"><h2>Minhas avaliações</h2><p class="muted small">Avaliações deste participante salvas nesta sessão.</p><div id="myRatings"></div></div></section>
@@ -650,7 +650,15 @@ async function syncBridgeParticipantPoll() {
     }
   } catch (error) {
     if (error.status === 401) {
+      const wasLoggedIn = Boolean(syncBridgeParticipantId);
       syncBridgeParticipantId = null;
+      window.participantIdentity = null;
+      if (wasLoggedIn) {
+        ratings = {};
+        submitted.clear();
+        if ($('loginScreen')) $('loginScreen').classList.remove('hidden');
+        if ($('loginError')) $('loginError').textContent = 'A sessão foi reiniciada ou sua inscrição expirou. Entre novamente para continuar.';
+      }
     } else if ($('loginError') && $('loginScreen') && !$('loginScreen').classList.contains('hidden')) {
       $('loginError').textContent = error.message;
     }
