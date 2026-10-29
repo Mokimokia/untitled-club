@@ -1,4 +1,4 @@
-import { adminCookieValue, json, requireSameOrigin } from "./_shared.js";
+import { adminCookieValue, json, requireSameOrigin } from "./_middleware.js";
 
 export async function onRequestPost({ request, env }) {
   try {
