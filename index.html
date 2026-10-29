@@ -469,20 +469,34 @@ $('loginForm').addEventListener('submit',async e=>{
     $('loginError').textContent=error.message;
   }
 },true);
-$('adminMode').onclick = async () => {
-  if (syncBridgeAdminAuthenticated) { switchMode('admin'); syncBridgeEnsureAdminTools(); syncBridgeRenderAdminData(); return; }
+async function syncBridgeLoginAdmin(fromLoginScreen = false) {
+  if (syncBridgeAdminAuthenticated) {
+    if (fromLoginScreen) $('loginScreen')?.classList.add('hidden');
+    switchMode('admin'); syncBridgeEnsureAdminTools(); syncBridgeRenderAdminData(); return;
+  }
   const password=window.prompt('Digite a senha administrativa configurada nos Secrets do Cloudflare Pages:');
   if(!password)return;
   try{
     await syncBridgeRequest('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
     syncBridgeAdminAuthenticated=true;
+    if (fromLoginScreen) $('loginScreen')?.classList.add('hidden');
     switchMode('admin');
     await syncBridgePoll();
     syncBridgeEnsureAdminTools();
     syncBridgeRenderAdminData();
     syncBridgeNotice('Admin autenticado. Participantes, avaliações e faixas vêm do Supabase.');
   }catch(error){alert(error.message);}
-};
+}
+$('adminMode').onclick = () => syncBridgeLoginAdmin(false);
+const participantAdminAccess = document.createElement('button');
+participantAdminAccess.type = 'button';
+participantAdminAccess.id = 'openAdminFromLogin';
+participantAdminAccess.className = 'btn';
+participantAdminAccess.style.width = '100%';
+participantAdminAccess.style.marginTop = '10px';
+participantAdminAccess.textContent = 'Entrar como administrador';
+participantAdminAccess.addEventListener('click', () => syncBridgeLoginAdmin(true));
+$('loginForm')?.appendChild(participantAdminAccess);
 $('artistMode').onclick=()=>switchMode('artist');
 $('submitRating').onclick=async()=>{
   const currentRatings=ratings[current]||{};
