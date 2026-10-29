@@ -448,17 +448,34 @@ function syncBridgeAdminStats(){
   const submittedRatings = ratingsData.filter(r => r.is_submitted);
   const uniqueTracks = new Set(submittedRatings.map(r => r.track_id));
   const overallValues = submittedRatings.map(r => Number(r.overall)).filter(Number.isFinite);
+  const activeTrack = syncBridgeState?.active_track || null;
+  const sessionClosed = syncBridgeState?.session?.status === "closed";
+  const nowMs = Date.now();
   if ($('adminTracksDone')) $('adminTracksDone').textContent = uniqueTracks.size+'/'+tracks.length;
   if ($('adminResponses')) $('adminResponses').textContent = String(submittedRatings.length);
   if ($('adminOverall')) $('adminOverall').textContent = overallValues.length ? fmt(overallValues.reduce((a,b)=>a+b,0)/overallValues.length) : '—';
   const participantStat = document.querySelector('#page-dashboard .stats .stat strong');
   if (participantStat) participantStat.textContent = String(participants.length);
+  const participantStatus = p => {
+    const ownRatings = ratingsData.filter(r => r.participant_id === p.id);
+    const done = ownRatings.filter(r => r.is_submitted).length;
+    const currentRating = activeTrack ? ownRatings.find(r => r.track_id === activeTrack.id) : null;
+    const lastSeenMs = Date.parse(p.last_seen_at || '');
+    const ageMs = nowMs - lastSeenMs;
+    const online = Number.isFinite(lastSeenMs) && ageMs <= 15000 && ageMs >= -30000;
+    if (sessionClosed) return {label:'Sessão encerrada',short:'Encerrada',color:'var(--red)',done};
+    if (activeTrack && currentRating?.is_submitted) return {label:'Enviou a faixa atual',short:'Enviada',color:'var(--green)',done};
+    if (activeTrack && currentRating) return {label:'Rascunho salvo',short:'Rascunho',color:'#e9b949',done};
+    if (activeTrack && online) return {label:'Em andamento',short:'Ao vivo',color:'#e9b949',done};
+    if (tracks.length > 0 && done >= tracks.length) return {label:'Concluiu a sessão',short:'Concluiu',color:'var(--green)',done};
+    if (!activeTrack && online) return {label:'Online · aguardando faixa',short:'Online',color:'#e9b949',done};
+    if (done > 0) return {label:'Aguardando próxima faixa',short:'Aguardando',color:'var(--green)',done};
+    return {label:'Não iniciou',short:'Não iniciou',color:'var(--red)',done};
+  };
   if ($('participantRows')) {
     $('participantRows').innerHTML = participants.length ? participants.map(p => {
-      const done = submittedRatings.filter(r=>r.participant_id===p.id).length;
-      const status = done >= tracks.length ? 'Concluiu' : done ? 'Em andamento' : 'Não iniciou';
-      const dot = status==='Concluiu' ? 'var(--green)' : status==='Em andamento' ? '#e9b949' : 'var(--red)';
-      return '<div class="person"><span>'+syncBridgeEscape(p.display_name)+'</span><span><i class="dot" style="background:'+dot+'"></i>'+status+' · '+done+'/'+tracks.length+'</span></div>';
+      const state = participantStatus(p);
+      return '<div class="person"><span>'+syncBridgeEscape(p.display_name)+'</span><span title="'+state.label+'"><i class="dot" style="background:'+state.color+'"></i>'+state.label+' · '+state.done+'/'+tracks.length+'</span></div>';
     }).join('') : '<p class="muted small">Ainda não há participantes registrados nesta sessão.</p>';
   }
   const fields = syncBridgeScoreFields;
@@ -474,8 +491,8 @@ function syncBridgeAdminStats(){
     return '<tr><td class="rank">'+String(t.position).padStart(2,'0')+'</td><td>'+syncBridgeEscape(t.name)+'</td><td>'+syncBridgeEscape(t.type)+'</td><td><strong>'+(avg===null?'—':fmt(avg))+'</strong></td><td>'+rows.length+'</td></tr>';
   }).join('');
   if ($('participantsMini')) $('participantsMini').innerHTML = participants.slice(0,4).map(p => {
-    const done = submittedRatings.filter(r=>r.participant_id===p.id).length;
-    return '<div class="person"><span>'+syncBridgeEscape(p.display_name)+'</span><strong>'+done+'/'+tracks.length+'</strong></div>';
+    const state = participantStatus(p);
+    return '<div class="person" title="'+state.label+'"><span>'+syncBridgeEscape(p.display_name)+'</span><strong>'+state.short+' · '+state.done+'/'+tracks.length+'</strong></div>';
   }).join('');
   for (const id of ['reportPerson']) {
     const select=$(id); if (!select) continue;
