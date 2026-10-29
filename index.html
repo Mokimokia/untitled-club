@@ -331,7 +331,7 @@ async function syncBridgeAction(action, body = {}) {
     if (state.admin) syncBridgeAdminData = state.admin;
     const selected = body.position ? tracks[Number(body.position)-1]?.name : null;
     const messages = {
-      release:(selected || 'Faixa')+' liberada. Cronômetro reiniciado em 03:00 e pausado.',
+      release:(selected || 'Faixa')+' liberada. Cronômetro iniciado automaticamente em 03:00.',
       close_track:(selected || 'Faixa')+' encerrada para avaliação.',
       end:'Sessão encerrada em todos os dispositivos.',
       reopen:'Sessão reaberta. Libere uma faixa para começar.',
