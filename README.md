@@ -14,7 +14,7 @@ Protótipo de Listening Session: interface de audição, painel administrativo e
 - `index.html` — interface.
 - `functions/api/session-state.js` — leitura do estado e comandos do cronômetro/sessão.
 - `functions/api/admin-login.js` — login administrativo.
-- `functions/api/_shared.js` — acesso privado ao Supabase e validação do cookie Admin.
+- `functions/api/_middleware.js` — acesso privado ao Supabase e validação do cookie Admin.
 - `supabase/migrations/` — esquema, sessão inicial e endurecimento de segurança.
 - `_routes.json` — restringe as Pages Functions aos endpoints `/api/*`.
 
