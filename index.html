@@ -200,7 +200,7 @@ function renderTrackAdmin(){
   list.innerHTML=tracks.map((track,index)=>{
     const votes=adminRatings.filter(r=>r.track_id===track.id&&r.is_submitted).length;
     const status=track.status==='released'?'Liberada agora':track.status==='closed'?'Encerrada':'Pendente';
-    return '<div class="person"><span>'+String(index+1).padStart(2,'0')+' · '+syncBridgeEscape(track.name)+' <span class="tag">'+syncBridgeEscape(track.type)+'</span></span><span><strong>'+status+'</strong> · '+votes+' envio(s) <button class="btn" data-open-track="'+index+'">Selecionar</button></span></div>';
+    return '<div class="person"><span>'+String(index+1).padStart(2,'0')+' · '+syncBridgeEscape(track.name)+' <span class="tag">'+syncBridgeEscape(track.type)+'</span></span><span><strong>'+status+'</strong> · <span data-track-votes="'+syncBridgeEscape(track.id)+'">'+votes+' envio(s)</span> <button class="btn" data-open-track="'+index+'">Selecionar</button></span></div>';
   }).join('');
   list.querySelectorAll('[data-open-track]').forEach(button=>button.onclick=()=>{
     const index=Number(button.dataset.openTrack);
@@ -619,6 +619,11 @@ function syncBridgeAdminStats(){
       $('activeTrackResponses').textContent = count + ' / ' + participants.length;
     }
   }
+  document.querySelectorAll('[data-track-votes]').forEach(element => {
+    const trackId = element.getAttribute('data-track-votes');
+    const count = submittedRatings.filter(r => r.track_id === trackId).length;
+    element.textContent = count + ' envio(s)';
+  });
   if ($('participantRows')) {
     $('participantRows').innerHTML = participants.length ? participants.map(p => {
       const status = participantStatus(p);
@@ -823,6 +828,7 @@ async function syncBridgeParticipantPoll() {
         if ($('improve')) $('improve').value='';
       }
       updateTrack();
+      if ($('page-artistDone') && !$('page-artistDone').classList.contains('hidden')) renderMyRatings();
     }
   } catch (error) {
     if (error.status === 401) {
