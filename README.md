@@ -1,16 +1,19 @@
 # untitled Club
 
-Listening Session para audições presenciais. O site usa Cloudflare Pages Functions como API segura e o Supabase como armazenamento compartilhado.
+Listening Session para audições presenciais. A interface usa Cloudflare Pages Functions como API segura e o Supabase como armazenamento compartilhado.
 
-## Funcionalidades conectadas
+## Funcionalidades
 
-- Entrada de participantes por nome; quando o administrador configura um código de entrada, a chave é obrigatória.
-- Registro de participantes no Supabase com cookie de sessão assinado pelo servidor.
-- Salvamento de rascunhos e avaliações enviadas por participante/faixa.
-- Cronômetro e faixa ativa compartilhados entre PC e celular.
-- Painel Admin com lista real de participantes e relatórios construídos a partir das avaliações armazenadas.
-- Adicionar novas faixas, renomear, marcar como referência/inédita, liberar e encerrar avaliação.
-- Código de entrada configurável no painel **Admin → Faixas e sessão**. O valor salvo é armazenado como hash e não é devolvido ao navegador.
+- Entrada de participantes por nome; se o Admin configurou um código de entrada, ele é validado no servidor.
+- Registro de participantes, rascunhos e avaliações enviadas no Supabase.
+- Cronômetro sincronizado entre dispositivos; **liberar uma faixa inicia automaticamente a contagem de 03:00**.
+- Painel Admin com participantes e resultados reais.
+- Adicionar faixas, renomear, classificar como referência/inédita, liberar e encerrar avaliação.
+- Configurar código de entrada no Admin.
+- **Salvar dados da sessão** baixa backup JSON; **Importar dados de sessão** restaura esse formato.
+- **Exportar documento** baixa um relatório HTML que pode ser aberto e impresso/salvo como PDF.
+- **Nova sessão** limpa participantes e avaliações, remove o código de entrada e recria as seis faixas padrão, com confirmação.
+- Não há botão “Próxima música” para participantes; o Admin controla a faixa ativa.
 
 ## Configuração obrigatória do Cloudflare
 
@@ -19,33 +22,40 @@ Abra [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages 
 | Nome | Tipo | Valor |
 | --- | --- | --- |
 | `SUPABASE_URL` | Variable | `https://ufwdxerumssnwcbduprt.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Secret / Encrypt** | Chave de serviço privada do projeto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret / Encrypt** | Chave privada de serviço do projeto Supabase |
 | `ADMIN_PASSWORD` | **Secret / Encrypt** | Senha forte escolhida pelo administrador |
 
 A chave de serviço privada fica exclusivamente no servidor Cloudflare. **Nunca a coloque em `index.html`, no GitHub ou no chat.**
 
 Depois de alterar variáveis/Secrets, publique um novo deploy da branch `main` ou use Retry deployment. Aguarde o status **Success** antes de testar.
 
-## Como utilizar
+## Como usar
 
-1. Entre no site e informe seu nome. Se o Admin configurou um código, informe a mesma chave em **Código de acesso**.
-2. Para configurar ou alterar essa chave: faça login no Admin com `ADMIN_PASSWORD`, abra **Faixas e sessão**, preencha **Código de entrada** e clique em **Salvar código de entrada**. Para remover a chave, salve o campo vazio.
-3. Em **Faixas e sessão**, use **Adicionar faixa** e **Renomear** para ajustar a lista.
-4. Libere a faixa desejada. O contador compartilhado reinicia pausado em 03:00; iniciar/pausar atualiza todos os dispositivos.
-5. Participantes devem preencher os dez critérios e enviar a avaliação antes do tempo acabar. Rascunhos também podem ser salvos e retomados.
+1. Abra o site e entre como Admin com `ADMIN_PASSWORD`.
+2. Em **Faixas e sessão**, configure o código de entrada, se desejar.
+3. Use **Adicionar faixa** e **Renomear** para configurar a audição.
+4. Clique em **Liberar faixa para todos**. A faixa é ativada e o cronômetro inicia imediatamente em 03:00.
+5. Participantes entram com nome e o código definido. As dez notas e os comentários ficam salvos ao enviar; rascunhos também são persistidos.
+6. Em **Faixas e sessão**, use **Salvar dados da sessão (.json)** para fazer backup, **Exportar documento** para baixar o relatório, **Importar dados de sessão (.json)** para restaurar e **Nova sessão** para começar do zero.
+
+### Formato de backup
+
+O backup JSON usa `format: "untitled-club-session-backup"` e `version: 1`. Não inclui a chave secreta do código de entrada. A importação preserva participantes e avaliações históricas, recria IDs e reinicia o cronômetro pausado; por segurança, participantes precisam entrar novamente. Não misture backups da prévia local com os backups do site publicado.
+
+**Atenção:** “Nova sessão” apaga participantes e avaliações da sessão corrente. Exporte um backup antes se precisar preservar os resultados.
 
 ## Arquitetura
 
 - `index.html` — interface.
 - `functions/api/_middleware.js` — acesso REST ao Supabase, hashes e tokens assinados.
 - `functions/api/admin-login.js` — autenticação do administrador.
-- `functions/api/session-state.js` — controle da sessão, timer, código de entrada e administração de faixas; fornece estatísticas para Admin autenticado.
+- `functions/api/session-state.js` — controle de sessão, timer, código de entrada, faixas e backup/importação.
 - `functions/api/participant-login.js` — valida o código e registra participantes.
 - `functions/api/participant-session.js` — retoma a sessão do participante e salva avaliações.
-- `supabase/migrations/` — esquema versionado do banco.
+- `supabase/migrations/` — esquema e função transacional de restauração da sessão.
 - `_routes.json` — executa Pages Functions somente em `/api/*`.
 
-As sessões dos participantes e avaliações são persistidas no Supabase. O sistema não entrega a chave privada ao navegador. A leitura pública da sessão expõe apenas estado da sessão, faixa ativa e tempo; a lista de participantes e os dados das avaliações só são incluídos para Admin autenticado.
+As tabelas ficam com RLS habilitado e sem privilégios diretos para `anon` e `authenticated`. A chave de serviço e a função transacional de restauração são acessíveis apenas no caminho de servidor autorizado. O endpoint público de leitura apresenta o estado do timer/faixa, não as notas ou os nomes dos participantes.
 
 ## Deploy automático
 
