@@ -139,6 +139,51 @@ let syncBridgeParticipantId = null;
 let syncBridgeRatingSignature = '';
 let syncBridgeNoticeShown = false;
 const syncBridgeScoreFields = ['initial_impression','melody','composition','production','vocal_performance','originality','emotional_connection','commercial_potential','replay_memorability','overall'];
+const syncBridgeOriginalUpdateTrack = updateTrack;
+updateTrack = function() {
+  if (mode === 'admin') { syncBridgeOriginalUpdateTrack(); return; }
+  if (activeReleasedTrack === null || !sessionOpen || closedTracks.has(activeReleasedTrack)) {
+    $('trackName').textContent = sessionOpen ? 'Aguardando liberação do administrador' : 'Sessão encerrada';
+    $('trackType').textContent = 'SESSÃO SINCRONIZADA';
+    $('trackArtist').textContent = sessionOpen ? 'Todos avaliarão a mesma faixa quando ela for liberada.' : 'A sessão foi encerrada pelo administrador.';
+    $('trackCounter').textContent = 'AGUARDANDO';
+    $('ratingArea').classList.add('hidden');
+    $('submittedArea').classList.add('hidden');
+    if ($('wave')) $('wave').classList.add('hidden');
+    if ($('playBtn')) $('playBtn').classList.add('hidden');
+    if ($('restart')) $('restart').classList.add('hidden');
+    if ($('nextTrack')) $('nextTrack').classList.add('hidden');
+    if (!$('releaseWaitingNotice')) {
+      const notice = document.createElement('div');
+      notice.id = 'releaseWaitingNotice';
+      notice.className = 'notice';
+      notice.textContent = sessionOpen ? 'A avaliação ainda não foi liberada. Aguarde o administrador.' : 'Esta sessão está encerrada.';
+      $('trackArtist').parentElement.appendChild(notice);
+    }
+    const notice = $('releaseWaitingNotice');
+    if (notice) notice.textContent = sessionOpen ? 'A avaliação ainda não foi liberada. Aguarde o administrador.' : 'Esta sessão está encerrada.';
+    return;
+  }
+  current = activeReleasedTrack;
+  syncBridgeOriginalUpdateTrack();
+  const track = tracks[current];
+  if (!track) return;
+  $('trackName').textContent = track.name;
+  $('trackType').textContent = track.type.toUpperCase() + ' · FAIXA LIBERADA';
+  $('trackCounter').textContent = String(current+1).padStart(2,'0') + ' / ' + String(tracks.length).padStart(2,'0');
+  const timedOut = seconds <= 0 && !submitted.has(current);
+  const locked = submitted.has(current) || closedTracks.has(current) || !sessionOpen || seconds <= 0;
+  $('ratingArea').classList.toggle('hidden', locked);
+  $('submittedArea').classList.toggle('hidden', !submitted.has(current) && sessionOpen && !closedTracks.has(current) && seconds > 0);
+  if (timedOut) {
+    $('submittedArea').classList.remove('hidden');
+    $('submittedArea').querySelector('h2').textContent = 'Tempo esgotado';
+    $('submittedArea').querySelector('p').textContent = 'A avaliação desta faixa foi encerrada. Aguarde a próxima liberação.';
+  }
+  if ($('wave')) $('wave').classList.remove('hidden');
+  const waiting = $('releaseWaitingNotice');
+  if (waiting) waiting.remove();
+};
 
 function syncBridgeNotice(message) { if ($('adminNotice')) $('adminNotice').textContent = message; }
 function syncBridgeEscape(value) {
