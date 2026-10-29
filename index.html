@@ -125,82 +125,121 @@ function displayClock(n){return String(Math.floor(Math.max(0,n)/60)).padStart(2,
 function syncTimerUI(){const clock=displayClock(seconds);if($('timer'))$('timer').textContent=clock;if($('participantTimer'))$('participantTimer').textContent=clock;if($('participantTimerStatus'))$('participantTimerStatus').textContent=!sessionOpen?'Sessão encerrada':seconds<=0?'Tempo esgotado — aguarde a próxima orientação':timerRunning?'Avaliação em andamento — acompanhe o tempo':'Contagem pausada; aguardando o administrador';if($('participantTimerProgress'))$('participantTimerProgress').style.width=(timerInitialSeconds?Math.max(0,Math.min(100,seconds/timerInitialSeconds*100)):0)+'%';if(seconds<=0){timerRunning=false;if($('submitRating'))$('submitRating').disabled=true}}
 const timerControls=document.createElement('div');timerControls.className='actions';timerControls.innerHTML='<button class="btn primary" id="startTimer">Iniciar contagem</button><button class="btn" id="pauseTimer">Pausar contagem</button>';const timerLabel=$('timer')?.parentElement;if(timerLabel)timerLabel.parentElement.insertBefore(timerControls,timerLabel.nextSibling);$('startTimer').onclick=()=>{if(!sessionOpen)return;timerRunning=true;$('adminNotice').textContent='Contagem iniciada para a avaliação presencial.';syncTimerUI()};$('pauseTimer').onclick=()=>{timerRunning=false;syncTimerUI()};$('addMinute').onclick=()=>{seconds+=60;timerInitialSeconds=Math.max(timerInitialSeconds,seconds);syncTimerUI();$('adminNotice').textContent='Um minuto adicionado ao tempo de avaliação.'};setInterval(()=>{if(!window.sharedTimerMode&&timerRunning&&sessionOpen&&seconds>0){seconds--;syncTimerUI()}},1000);
 
-/* Supabase shared session bridge: all session controls are server-authoritative. */
+/* Supabase-backed live session, participant entry, rating persistence and track management. */
 window.sharedTimerMode = true;
 let syncBridgeState = null;
 let syncBridgeOffsetMs = 0;
 let syncBridgeBusy = false;
+let syncBridgeParticipantBusy = false;
 let syncBridgeHasLoaded = false;
 let syncBridgeAdminAuthenticated = false;
+let syncBridgeAdminData = null;
 let syncBridgeSignature = '';
+let syncBridgeParticipantId = null;
+let syncBridgeRatingSignature = '';
 let syncBridgeNoticeShown = false;
+const syncBridgeScoreFields = ['initial_impression','melody','composition','production','vocal_performance','originality','emotional_connection','commercial_potential','replay_memorability','overall'];
 
-function syncBridgeNotice(message) {
-  if ($('adminNotice')) $('adminNotice').textContent = message;
+function syncBridgeNotice(message) { if ($('adminNotice')) $('adminNotice').textContent = message; }
+function syncBridgeEscape(value) {
+  return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
 }
 function syncBridgeClock() {
   if (!syncBridgeState) return;
-  const s = syncBridgeState.session;
-  if (s.timer_running && s.timer_deadline_at) {
-    seconds = Math.max(0, Math.ceil((Date.parse(s.timer_deadline_at) - (Date.now() + syncBridgeOffsetMs)) / 1000));
-    if (seconds <= 0) timerRunning = false;
+  const session = syncBridgeState.session;
+  if (session.timer_running && session.timer_deadline_at) {
+    seconds = Math.max(0, Math.ceil((Date.parse(session.timer_deadline_at) - (Date.now() + syncBridgeOffsetMs)) / 1000));
   } else {
     seconds = Math.max(0, Number(syncBridgeState.remaining_seconds) || 0);
   }
-  timerRunning = Boolean(s.timer_running) && seconds > 0;
+  timerRunning = Boolean(session.timer_running) && seconds > 0;
   syncTimerUI();
+}
+function syncBridgeRefreshTrackSelectors() {
+  for (const id of ['adminTrackSelect','reportTrack']) {
+    const select = $(id);
+    if (!select) continue;
+    const previous = Math.max(0, Number(select.value) || 0);
+    select.innerHTML = '';
+    tracks.forEach((track,index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = track.name;
+      select.appendChild(option);
+    });
+    select.value = String(Math.min(previous, Math.max(0, tracks.length-1)));
+  }
+  const selectedTrack = tracks[Math.max(0,Number($('adminTrackSelect')?.value)||0)];
+  if (selectedTrack && $('adminTrackName')) $('adminTrackName').textContent = selectedTrack.name;
 }
 function syncBridgeApply(state) {
   if (!state || !state.session || !Array.isArray(state.tracks)) return;
-  const signature = [state.session.status, state.active_track?.id || '', state.tracks.map(t => String(t.position) + ':' + t.status).join(',')].join('|');
+  const signature = [
+    state.session.status,
+    state.active_track?.id || '',
+    state.tracks.map(t => [t.id,t.position,t.name,t.track_type,t.status].join(':')).join(',')
+  ].join('|');
   const structureChanged = signature !== syncBridgeSignature;
   syncBridgeSignature = signature;
   const serverTime = Date.parse(state.server_now || '');
   if (Number.isFinite(serverTime)) syncBridgeOffsetMs = serverTime - Date.now();
+
+  const previous = new Map(tracks.map(t => [t.id, t]));
+  const nextTracks = state.tracks.map(t => ({
+    ...(previous.get(t.id) || { score: 0, votes: 0 }),
+    id: t.id, name: t.name,
+    type: t.track_type === 'reference' ? 'Referência' : 'Inédita',
+    track_type: t.track_type, position: Number(t.position), status: t.status
+  }));
+  tracks.splice(0, tracks.length, ...nextTracks);
   syncBridgeState = state;
   syncBridgeHasLoaded = true;
   sessionOpen = state.session.status === 'open';
   timerRunning = Boolean(state.session.timer_running);
   seconds = Math.max(0, Number(state.remaining_seconds) || 0);
   timerInitialSeconds = Math.max(1, Number(state.session.timer_duration_seconds) || 180);
-
   closedTracks.clear();
-  state.tracks.forEach(t => {
-    const index = Number(t.position) - 1;
-    if (!Number.isInteger(index) || index < 0 || index >= tracks.length) return;
-    tracks[index].name = t.name;
-    tracks[index].type = t.track_type === 'reference' ? 'Referência' : 'Inédita';
-    if (t.status === 'closed') closedTracks.add(index);
-    const opt = $('adminTrackSelect')?.querySelector('option[value="' + index + '"]');
-    if (opt) opt.textContent = t.name;
-  });
+  submitted.clear();
 
-  const active = state.active_track;
-  activeReleasedTrack = active ? Number(active.position) - 1 : null;
-  releasedTrack = activeReleasedTrack;
-  if (activeReleasedTrack !== null && activeReleasedTrack >= 0 && activeReleasedTrack < tracks.length) {
+  if (state.active_track) {
+    activeReleasedTrack = Number(state.active_track.position)-1;
+    releasedTrack = activeReleasedTrack;
     current = activeReleasedTrack;
+  } else {
+    activeReleasedTrack = null;
+    releasedTrack = null;
+    current = Math.max(0,Math.min(current,tracks.length-1));
   }
-  if ($('statusPill')) {
-    $('statusPill').textContent = sessionOpen ? '● Sessão sincronizada' : '● Sessão encerrada';
-  }
+  state.tracks.forEach(t => {
+    const index = Number(t.position)-1;
+    if (t.status === 'closed') closedTracks.add(index);
+  });
+  syncBridgeRefreshTrackSelectors();
+  if ($('statusPill')) $('statusPill').textContent = sessionOpen ? '● Sessão sincronizada' : '● Sessão encerrada';
+  if ($('statusPill')) $('statusPill').title = 'Estado compartilhado via Supabase';
   if ($('sessionStateText')) {
-    $('sessionStateText').textContent = sessionOpen ? (active ? 'Faixa liberada' : 'Aguardando faixa') : 'Encerrada';
+    $('sessionStateText').textContent = sessionOpen ? (state.active_track ? 'Faixa liberada' : 'Aguardando faixa') : 'Encerrada';
   }
   if ($('adminTrackName')) {
-    const selected = Math.max(0, Math.min(tracks.length - 1, Number($('adminTrackSelect')?.value ?? current)));
-    $('adminTrackName').textContent = active ? active.name : tracks[selected].name;
+    const selected = Math.max(0,Math.min(tracks.length-1,Number($('adminTrackSelect')?.value)||0));
+    $('adminTrackName').textContent = state.active_track ? state.active_track.name : (tracks[selected]?.name || 'Nenhuma faixa');
   }
   if ($('adminNotice') && !syncBridgeNoticeShown) {
-    $('adminNotice').textContent = 'Sessão e cronômetro sincronizados pelo Supabase entre os dispositivos.';
+    $('adminNotice').textContent = 'Sessão conectada ao Supabase. As mudanças são compartilhadas entre dispositivos.';
     syncBridgeNoticeShown = true;
   }
   syncBridgeClock();
   updateTrack();
-  if (structureChanged && mode === 'admin') { renderAdmin(); renderTrackAdmin(); }
+  if (state.admin && syncBridgeAdminAuthenticated) syncBridgeAdminData = state.admin;
+  if (structureChanged && mode === 'admin') {
+    renderAdmin();
+    renderTrackAdmin();
+    syncBridgeEnsureAdminTools();
+  }
+  if (syncBridgeAdminAuthenticated && syncBridgeAdminData) syncBridgeRenderAdminData();
 }
 async function syncBridgeRequest(url, options = {}) {
-  const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin', ...options });
+  const response = await fetch(url,{cache:'no-store',credentials:'same-origin',...options});
   let payload = {};
   try { payload = await response.json(); } catch { payload = {}; }
   if (!response.ok) {
@@ -216,85 +255,310 @@ async function syncBridgePoll() {
   try {
     const state = await syncBridgeRequest('/api/session-state');
     syncBridgeApply(state);
-    if ($('statusPill')) $('statusPill').title = 'Estado sincronizado via Supabase';
+    if (state.admin && syncBridgeAdminAuthenticated) {
+      syncBridgeAdminData = state.admin;
+      syncBridgeRenderAdminData();
+    }
   } catch (error) {
     if ($('statusPill')) {
       $('statusPill').textContent = '● Sincronização pendente';
       $('statusPill').title = error.message;
     }
     if (!syncBridgeHasLoaded && $('trackArtist')) {
-      $('trackArtist').textContent = 'A sincronização compartilhada está aguardando a configuração dos Secrets no Cloudflare Pages.';
+      $('trackArtist').textContent = 'A sessão compartilhada ainda não respondeu. Confira a configuração do servidor.';
     }
     if (syncBridgeAdminAuthenticated && $('adminNotice')) syncBridgeNotice(error.message);
-  } finally {
-    syncBridgeBusy = false;
-  }
+  } finally { syncBridgeBusy = false; }
 }
 async function syncBridgeAction(action, body = {}) {
-  if (!syncBridgeAdminAuthenticated) {
-    syncBridgeNotice('Entre no modo Admin para controlar a sessão compartilhada.');
-    return;
-  }
+  if (!syncBridgeAdminAuthenticated) { syncBridgeNotice('Entre no modo Admin para controlar a sessão compartilhada.'); return; }
   try {
-    const state = await syncBridgeRequest('/api/session-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...body })
+    const state = await syncBridgeRequest('/api/session-state',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action,...body})
     });
     syncBridgeApply(state);
-    const selected = body.position ? tracks[Number(body.position) - 1]?.name : null;
+    if (state.admin) syncBridgeAdminData = state.admin;
+    const selected = body.position ? tracks[Number(body.position)-1]?.name : null;
     const messages = {
-      release: (selected || 'Faixa') + ' liberada. Cronômetro sincronizado em 03:00 e pausado.',
-      close_track: (selected || 'Faixa') + ' encerrada para avaliação.',
-      end: 'Sessão encerrada para todos os dispositivos.',
-      reopen: 'Sessão reaberta. Libere uma faixa para começar.',
-      start: 'Contagem iniciada em todos os dispositivos.',
-      pause: 'Contagem pausada em todos os dispositivos.',
-      add_minute: 'Um minuto acrescentado ao cronômetro compartilhado.'
+      release:(selected || 'Faixa')+' liberada. Cronômetro reiniciado em 03:00 e pausado.',
+      close_track:(selected || 'Faixa')+' encerrada para avaliação.',
+      end:'Sessão encerrada em todos os dispositivos.',
+      reopen:'Sessão reaberta. Libere uma faixa para começar.',
+      start:'Contagem iniciada em todos os dispositivos.',
+      pause:'Contagem pausada em todos os dispositivos.',
+      add_minute:'Um minuto acrescentado ao cronômetro compartilhado.',
+      add_track:'Faixa adicionada à sessão.',
+      rename_track:'Nome da faixa atualizado.',
+      set_entry_code:body.code ? 'Código de entrada atualizado.' : 'Código removido; entrada sem chave.'
     };
     syncBridgeNotice(messages[action] || 'Sessão atualizada.');
+    syncBridgeRenderAdminData();
   } catch (error) {
     if (error.status === 401) {
       syncBridgeAdminAuthenticated = false;
-      alert('Sua sessão de administrador expirou. Entre novamente no modo Admin.');
+      alert('Sua sessão administrativa expirou. Entre novamente no modo Admin.');
       switchMode('artist');
     }
     syncBridgeNotice(error.message);
   }
 }
-$('adminMode').onclick = async () => {
-  if (syncBridgeAdminAuthenticated) {
-    switchMode('admin');
-    return;
+function syncBridgeEnsureAdminTools() {
+  const list = $('trackAdminList');
+  if (!list) return;
+  list.querySelectorAll('[data-open-track]').forEach(button => {
+    const index = Number(button.dataset.openTrack);
+    const actions = button.parentElement;
+    if (!actions || actions.querySelector('[data-rename-track]')) return;
+    const rename = document.createElement('button');
+    rename.className = 'btn';
+    rename.textContent = 'Renomear';
+    rename.dataset.renameTrack = String(index);
+    rename.style.marginLeft = '6px';
+    rename.onclick = async () => {
+      const existing = tracks[index];
+      if (!existing) return;
+      const name = window.prompt('Novo nome para a faixa:',existing.name);
+      if (name === null || !name.trim()) return;
+      await syncBridgeAction('rename_track',{position:index+1,name:name.trim()});
+    };
+    actions.appendChild(rename);
+  });
+  if (!$('trackManagerPanel')) {
+    list.insertAdjacentHTML('afterend', `
+      <div class="card" id="trackManagerPanel" style="margin-top:18px">
+        <div class="eyebrow">Configuração da sessão</div>
+        <h3 style="margin-top:8px">Adicionar faixa</h3>
+        <label class="small muted" for="newTrackName">Nome da faixa</label>
+        <input class="field" id="newTrackName" maxlength="120" placeholder="Ex.: Inédita 04">
+        <label class="small muted" for="newTrackType" style="display:block;margin-top:12px">Tipo</label>
+        <select class="field" id="newTrackType"><option value="unreleased">Inédita</option><option value="reference">Referência</option></select>
+        <button class="btn primary" id="addTrack" style="margin-top:12px">Adicionar faixa</button>
+        <hr style="border:0;border-top:1px solid var(--border);margin:24px 0">
+        <h3>Código de entrada</h3>
+        <p class="muted small">Defina a chave que novos participantes precisarão informar na tela inicial. Deixe em branco para permitir entrada sem código. O código salvo nunca é exibido de volta.</p>
+        <label class="small muted" for="entryCodeInput">Nova chave (4 a 40 caracteres)</label>
+        <input class="field" id="entryCodeInput" type="password" maxlength="40" autocomplete="new-password" placeholder="Digite uma nova chave ou deixe vazio para remover">
+        <div class="small muted" id="entryCodeStatus" style="margin-top:8px">Carregando configuração…</div>
+        <button class="btn" id="saveEntryCode" style="margin-top:12px">Salvar código de entrada</button>
+      </div>`);
+    $('addTrack').onclick = async () => {
+      const name = $('newTrackName').value.trim();
+      const track_type = $('newTrackType').value;
+      if (!name) { $('newTrackName').focus(); return; }
+      await syncBridgeAction('add_track',{name,track_type});
+      $('newTrackName').value = '';
+    };
+    $('saveEntryCode').onclick = async () => {
+      const code = $('entryCodeInput').value;
+      await syncBridgeAction('set_entry_code',{code});
+      $('entryCodeInput').value = '';
+    };
   }
-  const password = window.prompt('Digite a senha administrativa configurada nos Secrets do Cloudflare Pages:');
-  if (!password) return;
+  if ($('entryCodeStatus') && syncBridgeState) {
+    $('entryCodeStatus').textContent = syncBridgeState.session.has_entry_code ? 'Há uma chave de entrada configurada.' : 'Não há chave configurada; novos participantes entram sem código.';
+  }
+}
+function syncBridgeAdminStats(){
+  const data = syncBridgeAdminData;
+  if (!data) return;
+  const participants = data.participants || [];
+  const ratingsData = data.ratings || [];
+  const submittedRatings = ratingsData.filter(r => r.is_submitted);
+  const uniqueTracks = new Set(submittedRatings.map(r => r.track_id));
+  const overallValues = submittedRatings.map(r => Number(r.overall)).filter(Number.isFinite);
+  if ($('adminTracksDone')) $('adminTracksDone').textContent = uniqueTracks.size+'/'+tracks.length;
+  if ($('adminResponses')) $('adminResponses').textContent = String(submittedRatings.length);
+  if ($('adminOverall')) $('adminOverall').textContent = overallValues.length ? fmt(overallValues.reduce((a,b)=>a+b,0)/overallValues.length) : '—';
+  const participantStat = document.querySelector('#page-dashboard .stats .stat strong');
+  if (participantStat) participantStat.textContent = String(participants.length);
+  if ($('participantRows')) {
+    $('participantRows').innerHTML = participants.length ? participants.map(p => {
+      const done = submittedRatings.filter(r=>r.participant_id===p.id).length;
+      const status = done >= tracks.length ? 'Concluiu' : done ? 'Em andamento' : 'Não iniciou';
+      const dot = status==='Concluiu' ? 'var(--green)' : status==='Em andamento' ? '#e9b949' : 'var(--red)';
+      return '<div class="person"><span>'+syncBridgeEscape(p.display_name)+'</span><span><i class="dot" style="background:'+dot+'"></i>'+status+' · '+done+'/'+tracks.length+'</span></div>';
+    }).join('') : '<p class="muted small">Ainda não há participantes registrados nesta sessão.</p>';
+  }
+  const fields = syncBridgeScoreFields;
+  const fieldLabels = criteria.map(c=>c[0]);
+  if ($('criteriaBars')) $('criteriaBars').innerHTML = fields.map((field,i) => {
+    const vals = submittedRatings.map(r=>r[field]).filter(v=>v!==null && v!==undefined && Number.isFinite(Number(v))).map(Number);
+    const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+    return '<div class="barrow"><span>'+syncBridgeEscape(fieldLabels[i])+'</span><div class="bar"><span style="width:'+(avg===null?0:avg*10)+'%"></span></div><strong>'+(avg===null?'—':fmt(avg))+'</strong></div>';
+  }).join('');
+  if ($('rankingRows')) $('rankingRows').innerHTML = tracks.map(t => {
+    const rows = submittedRatings.filter(r=>r.track_id===t.id && r.overall!==null && r.overall!==undefined);
+    const avg = rows.length ? rows.reduce((a,r)=>a+Number(r.overall),0)/rows.length : null;
+    return '<tr><td class="rank">'+String(t.position).padStart(2,'0')+'</td><td>'+syncBridgeEscape(t.name)+'</td><td>'+syncBridgeEscape(t.type)+'</td><td><strong>'+(avg===null?'—':fmt(avg))+'</strong></td><td>'+rows.length+'</td></tr>';
+  }).join('');
+  if ($('participantsMini')) $('participantsMini').innerHTML = participants.slice(0,4).map(p => {
+    const done = submittedRatings.filter(r=>r.participant_id===p.id).length;
+    return '<div class="person"><span>'+syncBridgeEscape(p.display_name)+'</span><strong>'+done+'/'+tracks.length+'</strong></div>';
+  }).join('');
+  for (const id of ['reportPerson']) {
+    const select=$(id); if (!select) continue;
+    const old=select.value; select.innerHTML='';
+    participants.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.display_name; select.appendChild(o); });
+    if (participants.some(p=>p.id===old)) select.value=old;
+  }
+  $('adminResponses')?.closest('.stat')?.querySelector('span') && ($('adminResponses').closest('.stat').querySelector('span').textContent='Avaliações enviadas');
+  syncBridgeEnsureAdminTools();
+}
+function syncBridgeRenderAdminData() { syncBridgeAdminStats(); }
+async function syncBridgeParticipantPoll() {
+  if (syncBridgeParticipantBusy) return;
+  syncBridgeParticipantBusy = true;
   try {
-    await syncBridgeRequest('/api/admin-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
+    const payload = await syncBridgeRequest('/api/participant-session');
+    syncBridgeParticipantId = payload.participant.id;
+    window.participantIdentity = {name:payload.participant.display_name,id:payload.participant.id};
+    if ($('loginScreen')) $('loginScreen').classList.add('hidden');
+    if ($('pageDesc')) $('pageDesc').textContent = 'Olá, '+payload.participant.display_name+'. Suas avaliações ficam salvas nesta sessão.';
+    if ($('sessionTag')) $('sessionTag').textContent = 'PARTICIPANTE · '+payload.participant.display_name.toUpperCase();
+    syncBridgeApply(payload.state);
+    const signature = [payload.state.active_track?.id || '', ...(payload.ratings||[]).map(r=>[r.id,r.updated_at,r.is_submitted].join(':'))].join('|');
+    if (signature !== syncBridgeRatingSignature) {
+      syncBridgeRatingSignature = signature;
+      ratings = {};
+      submitted.clear();
+      (payload.ratings||[]).forEach(row => {
+        const index = tracks.findIndex(t=>t.id===row.track_id);
+        if (index < 0) return;
+        ratings[index] = {};
+        syncBridgeScoreFields.forEach((field,i)=>{ if(row[field]!==null && row[field]!==undefined) ratings[index][i]=Number(row[field]); });
+        if (row.is_submitted) submitted.add(index);
+        if (index===current) {
+          if ($('liked')) $('liked').value=row.liked || '';
+          if ($('improve')) $('improve').value=row.improve || '';
+        }
+      });
+      if (!payload.ratings?.some(r=>r.track_id===payload.state.active_track?.id)) {
+        if ($('liked')) $('liked').value='';
+        if ($('improve')) $('improve').value='';
+      }
+      updateTrack();
+    }
+  } catch (error) {
+    if (error.status === 401) {
+      syncBridgeParticipantId = null;
+    } else if ($('loginError') && $('loginScreen') && !$('loginScreen').classList.contains('hidden')) {
+      $('loginError').textContent = error.message;
+    }
+  } finally { syncBridgeParticipantBusy = false; }
+}
+$('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  const name=$('participantNameInput').value.trim();
+  const code=$('participantCodeInput').value.trim();
+  $('loginError').textContent='';
+  if(!name){$('loginError').textContent='Informe seu nome para continuar.';return;}
+  try {
+    const payload=await syncBridgeRequest('/api/participant-login',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,code})
     });
-    syncBridgeAdminAuthenticated = true;
+    syncBridgeParticipantId=payload.participant.id;
+    window.participantIdentity={name:payload.participant.display_name,id:payload.participant.id};
+    $('loginScreen').classList.add('hidden');
+    $('pageDesc').textContent='Olá, '+payload.participant.display_name+'. Suas avaliações ficam salvas nesta sessão.';
+    $('sessionTag').textContent='PARTICIPANTE · '+payload.participant.display_name.toUpperCase();
+    syncBridgeApply(payload.state);
+    await syncBridgeParticipantPoll();
+  } catch(error) {
+    $('loginError').textContent=error.message;
+  }
+},true);
+$('adminMode').onclick = async () => {
+  if (syncBridgeAdminAuthenticated) { switchMode('admin'); syncBridgeEnsureAdminTools(); syncBridgeRenderAdminData(); return; }
+  const password=window.prompt('Digite a senha administrativa configurada nos Secrets do Cloudflare Pages:');
+  if(!password)return;
+  try{
+    await syncBridgeRequest('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+    syncBridgeAdminAuthenticated=true;
     switchMode('admin');
     await syncBridgePoll();
-    syncBridgeNotice('Admin autenticado. Os controles agora atualizam a sessão compartilhada.');
-  } catch (error) {
-    alert(error.message);
-  }
+    syncBridgeEnsureAdminTools();
+    syncBridgeRenderAdminData();
+    syncBridgeNotice('Admin autenticado. Participantes, avaliações e faixas vêm do Supabase.');
+  }catch(error){alert(error.message);}
 };
-$('artistMode').onclick = () => switchMode('artist');
-if ($('releaseTrack')) $('releaseTrack').onclick = () => syncBridgeAction('release', { position: Number($('adminTrackSelect')?.value ?? 0) + 1 });
-if ($('closeTrack')) $('closeTrack').onclick = () => syncBridgeAction('close_track', { position: Number($('adminTrackSelect')?.value ?? 0) + 1 });
-if ($('endSession')) $('endSession').onclick = () => syncBridgeAction('end');
-if ($('resetSession')) $('resetSession').onclick = () => syncBridgeAction('reopen');
-if ($('reopenSession')) $('reopenSession').onclick = () => syncBridgeAction('reopen');
-if ($('startTimer')) $('startTimer').onclick = () => syncBridgeAction('start');
-if ($('pauseTimer')) $('pauseTimer').onclick = () => syncBridgeAction('pause');
-if ($('addMinute')) $('addMinute').onclick = () => syncBridgeAction('add_minute');
-setInterval(syncBridgeClock, 250);
-setInterval(syncBridgePoll, 1500);
+$('artistMode').onclick=()=>switchMode('artist');
+$('submitRating').onclick=async()=>{
+  const currentRatings=ratings[current]||{};
+  if(Object.keys(currentRatings).length!==10){$('saveMessage').textContent='Preencha os dez critérios antes de enviar.';return;}
+  await syncBridgeSaveRating(true);
+};
+$('saveDraft').onclick=async()=>syncBridgeSaveRating(false);
+async function syncBridgeSaveRating(isSubmitted) {
+  if(!syncBridgeParticipantId){$('saveMessage').textContent='Entre novamente para salvar sua avaliação.';return;}
+  const track=tracks[current];
+  if(!track?.id){$('saveMessage').textContent='Aguardando uma faixa ser liberada.';return;}
+  const currentRatings=ratings[current]||{};
+  const scores={}; syncBridgeScoreFields.forEach((field,i)=>{scores[field]=currentRatings[i]===undefined?null:Number(currentRatings[i]);});
+  try {
+    const payload=await syncBridgeRequest('/api/participant-session',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'save_rating',track_id:track.id,scores,liked:$('liked')?.value||'',improve:$('improve')?.value||'',is_submitted:isSubmitted})
+    });
+    syncBridgeApply(payload.state);
+    syncBridgeRatingSignature='';
+    await syncBridgeParticipantPoll();
+    $('saveMessage').textContent=isSubmitted?'Avaliação salva no Supabase. Obrigado!':'Rascunho salvo no Supabase.';
+  }catch(error){$('saveMessage').textContent=error.message;}
+}
+if ($('releaseTrack')) $('releaseTrack').onclick=()=>syncBridgeAction('release',{position:Number($('adminTrackSelect')?.value??0)+1});
+if ($('closeTrack')) $('closeTrack').onclick=()=>syncBridgeAction('close_track',{position:Number($('adminTrackSelect')?.value??0)+1});
+if ($('endSession')) $('endSession').onclick=()=>syncBridgeAction('end');
+if ($('resetSession')) $('resetSession').onclick=()=>syncBridgeAction('reopen');
+if ($('reopenSession')) $('reopenSession').onclick=()=>syncBridgeAction('reopen');
+if ($('startTimer')) $('startTimer').onclick=()=>syncBridgeAction('start');
+if ($('pauseTimer')) $('pauseTimer').onclick=()=>syncBridgeAction('pause');
+if ($('addMinute')) $('addMinute').onclick=()=>syncBridgeAction('add_minute');
+if ($('continueBtn')) $('continueBtn').onclick=()=>{ $('saveMessage').textContent='Aguarde o administrador liberar a próxima faixa.'; };
+$('previewTrackReport').onclick=()=>{
+  if(!syncBridgeAdminData)return;
+  const track=tracks[Math.max(0,Number($('reportTrack')?.value)||0)];
+  if(!track)return;
+  const rows=(syncBridgeAdminData.ratings||[]).filter(r=>r.track_id===track.id&&r.is_submitted);
+  const avg=field=>{const values=rows.map(r=>r[field]).filter(v=>v!==null&&v!==undefined).map(Number);return values.length?fmt(values.reduce((a,b)=>a+b,0)/values.length):'—';};
+  showReport('Relatório · '+syncBridgeEscape(track.name),
+    '<div class="person"><span>Overall médio</span><strong>'+avg('overall')+'/10</strong></div>'+
+    '<div class="person"><span>Impressão inicial média</span><strong>'+avg('initial_impression')+'/10</strong></div>'+
+    '<div class="person"><span>Melodia média</span><strong>'+avg('melody')+'/10</strong></div>'+
+    '<div class="person"><span>Avaliações enviadas</span><strong>'+rows.length+'</strong></div>'+
+    '<h3 style="margin-top:18px">Comentários</h3>'+rows.map(r=>'<div class="person"><span>'+syncBridgeEscape(r.liked||'Sem comentário positivo')+'</span><span>'+syncBridgeEscape(r.improve||'Sem sugestão de melhoria')+'</span></div>').join(''));
+};
+$('previewReport').onclick=()=>{
+  if(!syncBridgeAdminData)return;
+  const participant=(syncBridgeAdminData.participants||[]).find(p=>p.id===$('reportPerson')?.value);
+  if(!participant)return;
+  const rows=(syncBridgeAdminData.ratings||[]).filter(r=>r.participant_id===participant.id&&r.is_submitted);
+  const detail=rows.map(r=>{
+    const track=tracks.find(t=>t.id===r.track_id);
+    return '<div class="person"><span>'+syncBridgeEscape(track?.name||'Faixa')+'</span><strong>'+syncBridgeEscape(r.overall??'—')+'/10</strong></div>'+
+      (r.liked?'<p class="small">'+syncBridgeEscape(r.liked)+'</p>':'')+(r.improve?'<p class="small muted">'+syncBridgeEscape(r.improve)+'</p>':'');
+  }).join('');
+  showReport('Feedback · '+syncBridgeEscape(participant.display_name),detail||'<p class="muted">Ainda não há avaliações enviadas por este participante.</p>');
+};
+$('exportCsv').onclick=()=>{
+  if(!syncBridgeAdminData)return;
+  const rows=[['Participante','Faixa','Tipo','Impressão inicial','Melodia','Composição','Produção','Vocal','Originalidade','Conexão emocional','Potencial comercial','Replay','Overall','O que funcionou','O que melhorar','Enviada']];
+  const participants=new Map((syncBridgeAdminData.participants||[]).map(p=>[p.id,p.display_name]));
+  (syncBridgeAdminData.ratings||[]).forEach(r=>{
+    const track=tracks.find(t=>t.id===r.track_id);
+    rows.push([participants.get(r.participant_id)||'',track?.name||'',track?.type||'',r.initial_impression,r.melody,r.composition,r.production,r.vocal_performance,r.originality,r.emotional_connection,r.commercial_potential,r.replay_memorability,r.overall,r.liked||'',r.improve||'',r.is_submitted?'Sim':'Não']);
+  });
+  const csv='\ufeff'+rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='untitled-club-avaliacoes.csv';a.click();URL.revokeObjectURL(url);
+};
+setInterval(syncBridgeClock,250);
+setInterval(syncBridgePoll,1500);
+setInterval(()=>{if(syncBridgeParticipantId)syncBridgeParticipantPoll();},2500);
 syncBridgePoll();
+syncBridgeParticipantPoll();
 
 updateTrack();renderAdmin();renderParticipants();syncTimerUI();
 </script>
