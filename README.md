@@ -1,53 +1,54 @@
 # untitled Club
 
-Protótipo de Listening Session: interface de audição, painel administrativo e controle de liberação de faixas.
+Listening Session para audições presenciais. O site usa Cloudflare Pages Functions como API segura e o Supabase como armazenamento compartilhado.
 
-## Estado atual
+## Funcionalidades conectadas
 
-- A sessão compartilhada e seis faixas estão cadastradas no Supabase.
-- O estado da sessão, a faixa liberada e o cronômetro são lidos/escritos pelo servidor Cloudflare Pages Functions, usando o Supabase como fonte compartilhada.
-- O navegador não recebe a chave `service_role`; ela é usada somente como Secret do servidor.
-- **As avaliações individuais, participantes, relatórios e exportações ainda são demonstrativos e não são persistidos no Supabase.** Não use ainda para coletar avaliações reais.
+- Entrada de participantes por nome; quando o administrador configura um código de entrada, a chave é obrigatória.
+- Registro de participantes no Supabase com cookie de sessão assinado pelo servidor.
+- Salvamento de rascunhos e avaliações enviadas por participante/faixa.
+- Cronômetro e faixa ativa compartilhados entre PC e celular.
+- Painel Admin com lista real de participantes e relatórios construídos a partir das avaliações armazenadas.
+- Adicionar novas faixas, renomear, marcar como referência/inédita, liberar e encerrar avaliação.
+- Código de entrada configurável no painel **Admin → Faixas e sessão**. O valor salvo é armazenado como hash e não é devolvido ao navegador.
+
+## Configuração obrigatória do Cloudflare
+
+Abra [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages → untitled-club → Settings → Variables and Secrets**. No ambiente **Production**, configure:
+
+| Nome | Tipo | Valor |
+| --- | --- | --- |
+| `SUPABASE_URL` | Variable | `https://ufwdxerumssnwcbduprt.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret / Encrypt** | Chave de serviço privada do projeto Supabase |
+| `ADMIN_PASSWORD` | **Secret / Encrypt** | Senha forte escolhida pelo administrador |
+
+A chave de serviço privada fica exclusivamente no servidor Cloudflare. **Nunca a coloque em `index.html`, no GitHub ou no chat.**
+
+Depois de alterar variáveis/Secrets, publique um novo deploy da branch `main` ou use Retry deployment. Aguarde o status **Success** antes de testar.
+
+## Como utilizar
+
+1. Entre no site e informe seu nome. Se o Admin configurou um código, informe a mesma chave em **Código de acesso**.
+2. Para configurar ou alterar essa chave: faça login no Admin com `ADMIN_PASSWORD`, abra **Faixas e sessão**, preencha **Código de entrada** e clique em **Salvar código de entrada**. Para remover a chave, salve o campo vazio.
+3. Em **Faixas e sessão**, use **Adicionar faixa** e **Renomear** para ajustar a lista.
+4. Libere a faixa desejada. O contador compartilhado reinicia pausado em 03:00; iniciar/pausar atualiza todos os dispositivos.
+5. Participantes devem preencher os dez critérios e enviar a avaliação antes do tempo acabar. Rascunhos também podem ser salvos e retomados.
 
 ## Arquitetura
 
 - `index.html` — interface.
-- `functions/api/session-state.js` — leitura do estado e comandos do cronômetro/sessão.
-- `functions/api/admin-login.js` — login administrativo.
-- `functions/api/_middleware.js` — acesso privado ao Supabase e validação do cookie Admin.
-- `supabase/migrations/` — esquema, sessão inicial e endurecimento de segurança.
-- `_routes.json` — restringe as Pages Functions aos endpoints `/api/*`.
+- `functions/api/_middleware.js` — acesso REST ao Supabase, hashes e tokens assinados.
+- `functions/api/admin-login.js` — autenticação do administrador.
+- `functions/api/session-state.js` — controle da sessão, timer, código de entrada e administração de faixas; fornece estatísticas para Admin autenticado.
+- `functions/api/participant-login.js` — valida o código e registra participantes.
+- `functions/api/participant-session.js` — retoma a sessão do participante e salva avaliações.
+- `supabase/migrations/` — esquema versionado do banco.
+- `_routes.json` — executa Pages Functions somente em `/api/*`.
 
-O cronômetro é baseado em `timer_deadline_at`, e não no relógio local de cada navegador. Os dispositivos consultam `/api/session-state` periodicamente e recalculam o tempo a partir do mesmo prazo.
-
-## Configurar os Secrets do Cloudflare (obrigatório)
-
-Abra [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → projeto **untitled-club** → **Settings** → **Variables and Secrets**. Configure o ambiente **Production** e salve:
-
-| Nome | Tipo | Valor |
-| --- | --- | --- |
-| `SUPABASE_URL` | Variable (texto) | `https://ufwdxerumssnwcbduprt.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Secret (Encrypt)** | Chave `service_role` do projeto Supabase — nunca colocar no HTML ou GitHub |
-| `ADMIN_PASSWORD` | **Secret (Encrypt)** | Uma senha administrativa forte, escolhida por você |
-
-Para obter a chave `service_role`, abra o projeto no [Supabase Dashboard](https://supabase.com/dashboard/project/ufwdxerumssnwcbduprt) e localize **Project Settings → API Keys** (a chave legada de serviço). Cole somente no Secret do Cloudflare. Não a envie neste chat nem a grave no repositório.
-
-Guia oficial: [Cloudflare Pages variables and secrets](https://developers.cloudflare.com/pages/functions/bindings/).
-
-Depois de salvar as variáveis e Secrets, faça um novo deploy da branch `main` (ou use **Retry deployment** no último deploy). Os Secrets devem existir antes do deploy. Acesse `/api/session-state` no site; a resposta deve mostrar o estado JSON da sessão em vez do erro de configuração.
-
-Ao clicar em **Admin**, será solicitada a senha definida em `ADMIN_PASSWORD`. O cookie é assinado no servidor, marcado HttpOnly/Secure e expira em 12 horas.
-
-## Sincronização
-
-- **Liberar faixa:** ativa a faixa selecionada e reinicia o tempo para 03:00, pausado.
-- **Iniciar/Pausar:** atualiza o estado compartilhado para todos os dispositivos.
-- **+ 1 minuto:** aumenta o tempo compartilhado.
-- **Encerrar/Reabrir sessão:** sincroniza o estado e reinicia em 03:00 ao reabrir.
-- As Pages Functions retornam o estado e o cliente faz polling aproximadamente a cada 1,5 segundo; a tela recalcula o cronômetro usando o prazo salvo no banco.
+As sessões dos participantes e avaliações são persistidas no Supabase. O sistema não entrega a chave privada ao navegador. A leitura pública da sessão expõe apenas estado da sessão, faixa ativa e tempo; a lista de participantes e os dados das avaliações só são incluídos para Admin autenticado.
 
 ## Deploy automático
 
-O Cloudflare Pages deve estar conectado ao repositório `Mokimokia/untitled-club`, branch `main`. Como os arquivos estáticos estão na raiz, use **None / No framework**, sem comando de build e diretório de saída `.`. Cada commit em `main` inicia uma nova publicação.
+O Cloudflare Pages deve estar conectado a `Mokimokia/untitled-club`, branch `main`, com **None / No framework**, comando de build vazio e diretório de saída `.`. Novos commits na branch `main` iniciam publicações automaticamente.
 
-Documentação: [Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/) e [Pages Functions routing](https://developers.cloudflare.com/pages/functions/routing/).
+Documentação: [Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/) · [Pages Functions](https://developers.cloudflare.com/pages/functions/) · [Supabase API security](https://supabase.com/docs/guides/api/securing-your-api).
