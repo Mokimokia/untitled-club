@@ -931,17 +931,69 @@ if ($('pauseTimer')) $('pauseTimer').onclick=()=>syncBridgeAction('pause');
 if ($('addMinute')) $('addMinute').onclick=()=>syncBridgeAction('add_minute');
 if ($('continueBtn')) $('continueBtn').onclick=()=>{ $('saveMessage').textContent='Aguarde o administrador liberar a próxima faixa.'; };
 $('previewTrackReport').onclick=()=>{
-  if(!syncBridgeAdminData)return;
-  const track=tracks[Math.max(0,Number($('reportTrack')?.value)||0)];
-  if(!track)return;
-  const rows=(syncBridgeAdminData.ratings||[]).filter(r=>r.track_id===track.id&&r.is_submitted);
-  const avg=field=>{const values=rows.map(r=>r[field]).filter(v=>v!==null&&v!==undefined).map(Number);return values.length?fmt(values.reduce((a,b)=>a+b,0)/values.length):'—';};
-  showReport('Relatório · '+syncBridgeEscape(track.name),
-    '<div class="person"><span>Overall médio</span><strong>'+avg('overall')+'/10</strong></div>'+
-    '<div class="person"><span>Impressão inicial média</span><strong>'+avg('initial_impression')+'/10</strong></div>'+
-    '<div class="person"><span>Melodia média</span><strong>'+avg('melody')+'/10</strong></div>'+
-    '<div class="person"><span>Avaliações enviadas</span><strong>'+rows.length+'</strong></div>'+
-    '<h3 style="margin-top:18px">Comentários</h3>'+rows.map(r=>'<div class="person"><span>'+syncBridgeEscape(r.liked||'Sem comentário positivo')+'</span><span>'+syncBridgeEscape(r.improve||'Sem sugestão de melhoria')+'</span></div>').join(''));
+  if(!syncBridgeAdminData){
+    syncBridgeNotice('Entre no Admin para carregar os resultados reais.');
+    return;
+  }
+  const trackIndex=Number($('reportTrack')?.value);
+  const track=tracks[Number.isInteger(trackIndex)?trackIndex:0];
+  if(!track){
+    showReport('Relatório da faixa','<p class="muted">Nenhuma faixa está cadastrada nesta sessão.</p>');
+    return;
+  }
+
+  const allRatings=syncBridgeAdminData.ratings||[];
+  const participants=new Map((syncBridgeAdminData.participants||[]).map(p=>[p.id,p.display_name]));
+  const submittedForTrack=allRatings.filter(r=>r.track_id===track.id&&r.is_submitted);
+  const allForTrack=allRatings
+    .filter(r=>r.track_id===track.id)
+    .slice()
+    .sort((a,b)=>Date.parse(b.submitted_at||b.updated_at||b.created_at||0)-Date.parse(a.submitted_at||a.updated_at||a.created_at||0));
+  const referenceTrackIds=new Set(tracks.filter(t=>t.track_type==='reference').map(t=>t.id));
+  const referenceRatings=allRatings.filter(r=>referenceTrackIds.has(r.track_id)&&r.is_submitted);
+  const fields=syncBridgeScoreFields.map((field,index)=>({field,label:criteria[index]?.[0]||field}));
+  const average=(rows,field)=>{
+    const values=rows.map(r=>r[field]).filter(v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))).map(Number);
+    return {value:values.length?fmt(values.reduce((sum,value)=>sum+value,0)/values.length):'—',count:values.length};
+  };
+  const escaped=syncBridgeEscape;
+  const overall=average(submittedForTrack,'overall').value;
+  const referenceOverall=average(referenceRatings,'overall').value;
+  const comparisonRows=fields.map(({field,label})=>{
+    const current=average(submittedForTrack,field);
+    const refs=average(referenceRatings,field);
+    return '<tr><td>'+escaped(label)+'</td><td><strong>'+current.value+'</strong></td><td><strong>'+refs.value+'</strong></td><td>'+current.count+'</td><td>'+refs.count+'</td></tr>';
+  }).join('');
+  const summary=
+    '<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin:18px 0">'+
+      '<div class="stat"><span>Overall médio da faixa</span><strong>'+overall+'</strong><small>/10</small></div>'+
+      '<div class="stat"><span>Overall médio das referências</span><strong>'+referenceOverall+'</strong><small>/10</small></div>'+
+      '<div class="stat"><span>Avaliações enviadas</span><strong>'+submittedForTrack.length+'</strong></div>'+
+      '<div class="stat"><span>Registros totais</span><strong>'+allForTrack.length+'</strong></div>'+
+    '</div>'+
+    '<h3 style="margin:22px 0 10px">Médias por critério</h3>'+
+    '<p class="muted small">A comparação usa apenas avaliações enviadas. A média de Referências agrega todas as avaliações enviadas das faixas cadastradas como Referência nesta sessão.</p>'+
+    '<div class="tablewrap"><table class="report-criteria-table"><thead><tr><th>Critério</th><th>Esta faixa</th><th>Média das referências</th><th>N da faixa</th><th>N referências</th></tr></thead><tbody>'+comparisonRows+'</tbody></table></div>';
+
+  const evaluationRows=allForTrack.map(r=>{
+    const participant=participants.get(r.participant_id)||'Participante não identificado';
+    const scores=fields.map(({field})=>'<td>'+escaped(r[field]??'—')+'</td>').join('');
+    const state=r.is_submitted?'Enviada':'Rascunho';
+    const dateValue=r.submitted_at||r.updated_at||r.created_at;
+    const date=dateValue&&Number.isFinite(Date.parse(dateValue))?new Date(dateValue).toLocaleString('pt-BR'):'—';
+    return '<tr><td>'+escaped(participant)+'</td><td>'+state+'</td>'+scores+
+      '<td class="report-comment">'+escaped(r.liked||'—')+'</td>'+
+      '<td class="report-comment">'+escaped(r.improve||'—')+'</td>'+
+      '<td>'+escaped(date)+'</td></tr>';
+  }).join('');
+  const details=
+    '<h3 style="margin:26px 0 10px">Todas as avaliações da faixa</h3>'+
+    '<p class="muted small">Inclui registros enviados e rascunhos salvos. Comentários são exibidos integralmente.</p>'+
+    (allForTrack.length
+      ? '<div class="tablewrap"><table class="track-report-detail"><thead><tr><th>Participante</th><th>Estado</th>'+fields.map(({label})=>'<th>'+escaped(label)+'</th>').join('')+'<th>O que funcionou</th><th>O que melhorar</th><th>Data</th></tr></thead><tbody>'+evaluationRows+'</tbody></table></div>'
+      : '<p class="muted">Ainda não há avaliações ou rascunhos registrados para esta faixa.</p>');
+  const styles='<style>.track-report-detail{min-width:1450px;font-size:11px}.track-report-detail th,.track-report-detail td{white-space:normal;vertical-align:top}.track-report-detail .report-comment{min-width:180px;max-width:280px;white-space:pre-wrap;overflow-wrap:anywhere}.report-criteria-table td,.report-criteria-table th{white-space:normal}.stats .stat strong{overflow-wrap:anywhere}@media print{#reportPreview .tablewrap{overflow:visible!important}.track-report-detail{min-width:0;font-size:8px}.track-report-detail th,.track-report-detail td{padding:4px;overflow-wrap:anywhere}.track-report-detail .report-comment{min-width:0;max-width:none}.track-report-detail tr{break-inside:avoid}#reportPreview .stats{display:flex;flex-wrap:wrap}#reportPreview .stat{flex:1;min-width:100px}}</style>';
+  showReport('Relatório · '+escaped(track.name),styles+summary+details);
 };
 $('previewReport').onclick=()=>{
   if(!syncBridgeAdminData)return;
