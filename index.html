@@ -877,7 +877,7 @@ async function syncBridgeLoginAdmin(fromLoginScreen = false) {
     if (fromLoginScreen) $('loginScreen')?.classList.add('hidden');
     switchMode('admin'); syncBridgeEnsureAdminTools(); syncBridgeRenderAdminData(); return;
   }
-  const password=window.prompt('Digite a senha administrativa configurada nos Secrets do Cloudflare Pages:');
+  const password=window.prompt('');
   if(!password)return;
   try{
     await syncBridgeRequest('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
