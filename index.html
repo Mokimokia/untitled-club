@@ -40,7 +40,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 <body><div id="app" data-sites-preview-theme="custom">
 <header class="topbar"><div class="brand" style="gap:0;letter-spacing:0"><img class="brand-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:clamp(150px,17vw,205px);height:auto;max-width:55vw;object-fit:contain"></div><div class="top-actions"><span class="pill" id="statusPill" aria-live="polite">● Conectando ao servidor…</span></div></header>
 <main>
-<section class="login-screen" id="loginScreen"><form class="login-box" id="loginForm"><img class="login-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:min(220px,100%);height:auto;margin:0 auto 20px"><div class="eyebrow">Listening Session · Acesso à sessão</div><h1>Antes de começar,<br>identifique-se.</h1><p>Informe seu nome para registrar suas avaliações. Suas respostas individuais não serão exibidas aos outros participantes.</p><label for="participantNameInput">Nome do participante *</label><input class="field" id="participantNameInput" name="participantName" autocomplete="name" placeholder="Como devemos identificar você?" required maxlength="80"><label for="participantCodeInput">Código de acesso (se houver)</label><input class="field" id="participantCodeInput" placeholder="Código fornecido pela organização" maxlength="40"><div class="login-error" id="loginError" aria-live="polite"></div><button class="btn primary" type="submit" style="width:100%;margin-top:10px">Entrar na sessão →</button><div class="footnote">Entrada compartilhada. Sua identificação e suas avaliações são salvas nesta sessão.</div></form></section>
+<section class="login-screen" id="loginScreen"><form class="login-box" id="loginForm"><img class="login-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:min(220px,100%);height:auto;margin:0 auto 20px"><h1>Antes de começar,<br>identifique-se <span style="font-family:Arial,sans-serif;font-size:.22em;letter-spacing:0;vertical-align:middle;text-transform:none;font-weight:400;white-space:nowrap">(ou não)</span>.</h1><label for="participantNameInput">Nome do participante *</label><input class="field" id="participantNameInput" name="participantName" autocomplete="name" placeholder="Como devemos identificar você?" required maxlength="80"><label for="participantCodeInput">Código de acesso</label><input class="field" id="participantCodeInput" placeholder="Código fornecido pela organização" maxlength="40"><div class="login-error" id="loginError" aria-live="polite"></div><button class="btn primary" type="submit" style="width:100%;margin-top:10px">Entrar na sessão →</button></form></section>
 <section class="hero"><div><div class="eyebrow">Música em primeiro lugar</div><h1 id="pageTitle">Ouça com atenção.<br>Opine com liberdade.</h1><p id="pageDesc">Sua percepção importa. Avalie cada faixa individualmente; suas respostas são privadas e não aparecem para os outros participantes.</p></div><div class="tag" id="sessionTag">CARREGANDO SESSÃO…</div></section>
 <div class="layout"><aside class="sidebar" id="sidebarArtist"><button class="navbtn active" data-page="listen"><span class="navicon">◉</span> Avaliar música</button><button class="navbtn" data-page="instructions"><span class="navicon">ⓘ</span> Como funciona</button><button class="navbtn" data-page="artistDone"><span class="navicon">✓</span> Minhas avaliações</button></aside><aside class="sidebar hidden" id="sidebarAdmin"><button class="navbtn active" data-page="dashboard"><span class="navicon">▦</span> Visão geral</button><button class="navbtn" data-page="tracks"><span class="navicon">♫</span> Faixas e sessão</button><button class="navbtn" data-page="participants"><span class="navicon">♙</span> Participantes</button><button class="navbtn" data-page="reports"><span class="navicon">▤</span> Relatórios</button></aside>
 <div class="content">
@@ -895,9 +895,14 @@ const participantAdminAccess = document.createElement('button');
 participantAdminAccess.type = 'button';
 participantAdminAccess.id = 'openAdminFromLogin';
 participantAdminAccess.className = 'btn';
-participantAdminAccess.style.width = '100%';
+participantAdminAccess.style.width = 'auto';
+participantAdminAccess.style.display = 'block';
+participantAdminAccess.style.margin = '10px auto 0';
+participantAdminAccess.style.padding = '7px 22px';
+participantAdminAccess.style.fontSize = '11px';
+participantAdminAccess.style.minWidth = '88px';
 participantAdminAccess.style.marginTop = '10px';
-participantAdminAccess.textContent = 'Entrar como administrador';
+participantAdminAccess.textContent = 'Admin';
 participantAdminAccess.addEventListener('click', () => syncBridgeLoginAdmin(true));
 $('loginForm')?.appendChild(participantAdminAccess);
 $('artistMode').onclick=()=>switchMode('artist');
