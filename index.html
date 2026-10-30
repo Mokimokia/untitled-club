@@ -45,7 +45,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 <div class="layout"><aside class="sidebar" id="sidebarArtist"><button class="navbtn active" data-page="listen"><span class="navicon">◉</span> Avaliar música</button><button class="navbtn" data-page="artistDone"><span class="navicon">✓</span> Minhas avaliações</button></aside><aside class="sidebar hidden" id="sidebarAdmin"><button class="navbtn active" data-page="dashboard"><span class="navicon">▦</span> Visão geral</button><button class="navbtn" data-page="tracks"><span class="navicon">♫</span> Faixas e sessão</button><button class="navbtn" data-page="participants"><span class="navicon">♙</span> Participantes</button><button class="navbtn" data-page="reports"><span class="navicon">▤</span> Relatórios</button></aside>
 <div class="content">
 <section id="page-listen">
-<div class="card"><div class="track-head"><div class="cover">✳</div><div class="track-meta"><div class="eyebrow" id="trackType">SESSÃO PRESENCIAL</div><h2 id="trackName">Aguardando.</h2><div class="muted small" id="trackArtist">O DJ conduz a audição. Avalie enquanto a faixa está tocando.</div></div><span class="tag" id="trackCounter">AGUARDANDO</span></div><div style="margin-top:18px;padding:20px;border:2px solid #3bada7;background:#d9eee0;text-align:center;border-radius:6px"><div class="eyebrow" style="color:#245a54!important">TEMPO RESTANTE</div><div id="participantTimer" style="font-size:clamp(42px,8vw,68px);font-weight:900;letter-spacing:-.06em;color:#4a241c;font-variant-numeric:tabular-nums;margin:8px 0">--:--</div><div id="participantTimerStatus" style="font-size:12px;color:#245a54">Carregando estado do cronômetro…</div><div class="progressline" style="height:7px;background:#b6d8ca;margin-top:15px"><span id="participantTimerProgress" style="width:0%;background:#3bada7"></span></div></div></div>
+<div class="card"><div class="track-head"><div class="cover">✳</div><div class="track-meta"><div class="eyebrow" id="trackType">SESSÃO PRESENCIAL</div><h2 id="trackName">Aguardando liberação</h2><div class="muted small" id="trackArtist">O DJ conduz a audição. Avalie enquanto a faixa está tocando.</div></div><span class="tag" id="trackCounter">AGUARDANDO</span></div><div style="margin-top:18px;padding:20px;border:2px solid #3bada7;background:#d9eee0;text-align:center;border-radius:6px"><div class="eyebrow" style="color:#245a54!important">TEMPO RESTANTE PARA AVALIAR</div><div id="participantTimer" style="font-size:clamp(42px,8vw,68px);font-weight:900;letter-spacing:-.06em;color:#4a241c;font-variant-numeric:tabular-nums;margin:8px 0">--:--</div><div id="participantTimerStatus" style="font-size:12px;color:#245a54">Carregando estado do cronômetro…</div><div class="progressline" style="height:7px;background:#b6d8ca;margin-top:15px"><span id="participantTimerProgress" style="width:0%;background:#3bada7"></span></div></div></div>
 <div id="ratingArea"><div class="card"><div class="eyebrow">Sua avaliação</div><h2 style="margin-top:7px">O que você sentiu ao ouvir?</h2><p class="muted small">Dê uma nota para cada critério. Você pode usar meia estrela. O Overall aparece por último.</p><div class="progressline"><span id="ratingProgress" style="width:0%"></span></div><div class="small muted" id="ratingCount">0 de 10 critérios preenchidos</div></div><div class="criteria" id="criteriaList"></div><div class="card"><h3>Comentários (opcional)</h3><label class="small muted" for="liked">O que mais funcionou?</label><textarea id="liked" class="field" rows="2" placeholder="Melodia, letra, interpretação..."></textarea><label class="small muted" for="improve" style="margin-top:12px">O que poderia melhorar?</label><textarea id="improve" class="field" rows="2" placeholder="Sugestões construtivas..."></textarea><div class="actions"><button class="btn" id="saveDraft">Salvar rascunho</button><button class="btn primary" id="submitRating">Enviar avaliação →</button></div><div id="saveMessage" class="footnote" aria-live="polite"></div></div></div>
 <div id="submittedArea" class="card hidden"><div class="empty"><div class="bigcheck">✓</div><h2>Avaliação registrada</h2><p class="muted">Obrigado por ouvir com atenção. Você pode seguir para a próxima faixa.</p></div></div>
 </section>
@@ -55,7 +55,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 <section id="page-tracks" class="hidden"><div class="card"><div class="eyebrow">Administração</div><h2>Faixas e sessão</h2><p class="muted small">Gerencie faixas, código de entrada e fluxo da sessão compartilhada.</p><div id="trackAdminList"></div><div class="actions"><button class="btn" id="resetSession">Reabrir sessão</button><button class="btn primary" data-goto="dashboard">Voltar ao painel</button></div></div></section>
 <section id="page-participants" class="hidden"><div class="card"><h2>Participantes</h2><p class="muted small">Status e atividade sincronizados com a sessão compartilhada.</p><div id="participantRows"></div></div></section>
 <section id="page-reports" class="hidden"><div class="card"><div class="eyebrow">Exportação</div><h2>Relatórios internos</h2><p class="muted">Consulte os resultados agrupados por música ou veja o feedback de cada participante.</p><div class="report-tabs"><button class="report-tab active" id="reportByTrack">Por música</button><button class="report-tab" id="reportByPerson">Por participante</button></div><div id="reportTrackPanel"><label class="small muted" for="reportTrack">Música</label><select class="field" id="reportTrack"></select><button class="btn primary" style="margin-top:12px" id="previewTrackReport">Ver relatório da música</button></div><div id="reportPersonPanel" class="hidden"><label class="small muted" for="reportPerson">Participante</label><select class="field" id="reportPerson"></select><button class="btn primary" style="margin-top:12px" id="previewReport">Ver relatório do participante</button></div><button class="btn" style="margin-top:12px" id="exportCsv">Exportar ranking CSV</button><div id="reportPreview" class="hidden" style="margin-top:18px"></div></div></section>
-</div></div><footer class="footnote" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:9px;opacity:.78"><span style="display:flex;align-items:center;gap:5px"><button type="button" class="mode active" id="artistMode" style="font-size:9px;padding:4px 7px">Participante</button><button type="button" class="mode" id="adminMode" style="font-size:9px;padding:4px 7px">Admin</button></span></footer>
+</div></div><footer class="footnote" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:9px;opacity:.78"><span style="display:flex;align-items:center;gap:5px"><span>Acesso</span><button type="button" class="mode active" id="artistMode" style="font-size:9px;padding:4px 7px">Participante</button><button type="button" class="mode" id="adminMode" style="font-size:9px;padding:4px 7px">Admin</button></span></footer>
 </main></div>
 <script>
 const criteria=[
@@ -102,8 +102,8 @@ function updateProgress(){
 function updateTrack(){
   const track=tracks[current];
   if(!track){
-    $('trackName').textContent=syncBridgeHasLoaded?(sessionOpen?'Aguardando.':'Sessão encerrada'):'Conectando à sessão…';
-    $('trackArtist').textContent=syncBridgeHasLoaded?(sessionOpen?'Aguardando.':'A sessão foi encerrada pelo administrador.'):'Carregando o estado compartilhado da sessão.';
+    $('trackName').textContent=syncBridgeHasLoaded?(sessionOpen?'Aguardando liberação do administrador':'Sessão encerrada'):'Conectando à sessão…';
+    $('trackArtist').textContent=syncBridgeHasLoaded?(sessionOpen?'Todos avaliarão a faixa assim que o administrador liberar.':'A sessão foi encerrada pelo administrador.'):'Carregando o estado compartilhado da sessão.';
     $('trackType').textContent='SESSÃO COMPARTILHADA';
     $('trackCounter').textContent='AGUARDANDO';
     $('ratingArea').classList.add('hidden');
@@ -230,7 +230,7 @@ function syncTimerUI(){
   const clock=seconds>0?String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'):'00:00';
   if($('timer'))$('timer').textContent=clock;
   if($('participantTimer'))$('participantTimer').textContent=clock;
-  if($('participantTimerStatus'))$('participantTimerStatus').textContent=!syncBridgeHasLoaded?'Carregando estado do cronômetro…':!sessionOpen?'Sessão encerrada':seconds<=0?'Tempo esgotado — aguarde a próxima orientação':timerRunning?'Avaliação em andamento — acompanhe o tempo':'Aguardando.';
+  if($('participantTimerStatus'))$('participantTimerStatus').textContent=!syncBridgeHasLoaded?'Carregando estado do cronômetro…':!sessionOpen?'Sessão encerrada':seconds<=0?'Tempo esgotado — aguarde a próxima orientação':timerRunning?'Avaliação em andamento — acompanhe o tempo':'Contagem pausada; aguardando o administrador';
   if($('participantTimerProgress'))$('participantTimerProgress').style.width=(timerInitialSeconds>0?Math.max(0,Math.min(100,seconds/timerInitialSeconds*100)):0)+'%';
   if(seconds<=0&&$('submitRating'))$('submitRating').disabled=true;
 }
@@ -265,7 +265,7 @@ const syncBridgeOriginalUpdateTrack = updateTrack;
 updateTrack = function() {
   if (mode === 'admin') { syncBridgeOriginalUpdateTrack(); return; }
   if (activeReleasedTrack === null || !sessionOpen || closedTracks.has(activeReleasedTrack)) {
-    $('trackName').textContent = sessionOpen ? 'Aguardando.' : 'Sessão encerrada';
+    $('trackName').textContent = sessionOpen ? 'Aguardando liberação do administrador' : 'Sessão encerrada';
     $('trackType').textContent = 'SESSÃO SINCRONIZADA';
     $('trackArtist').textContent = sessionOpen ? 'Todos avaliarão a mesma faixa quando ela for liberada.' : 'A sessão foi encerrada pelo administrador.';
     $('trackCounter').textContent = 'AGUARDANDO';
@@ -279,11 +279,11 @@ updateTrack = function() {
       const notice = document.createElement('div');
       notice.id = 'releaseWaitingNotice';
       notice.className = 'notice';
-      notice.textContent = sessionOpen ? 'Aguarde.' : 'Esta sessão está encerrada.';
+      notice.textContent = sessionOpen ? 'A avaliação ainda não foi liberada. Aguarde o administrador.' : 'Esta sessão está encerrada.';
       $('trackArtist').parentElement.appendChild(notice);
     }
     const notice = $('releaseWaitingNotice');
-    if (notice) notice.textContent = sessionOpen ? 'Aguarde.' : 'Esta sessão está encerrada.';
+    if (notice) notice.textContent = sessionOpen ? 'A avaliação ainda não foi liberada. Aguarde o administrador.' : 'Esta sessão está encerrada.';
     return;
   }
   current = activeReleasedTrack;
@@ -938,7 +938,7 @@ if ($('reopenSession')) $('reopenSession').onclick=()=>syncBridgeAction('reopen'
 if ($('startTimer')) $('startTimer').onclick=()=>syncBridgeAction('start');
 if ($('pauseTimer')) $('pauseTimer').onclick=()=>syncBridgeAction('pause');
 if ($('addMinute')) $('addMinute').onclick=()=>syncBridgeAction('add_minute');
-if ($('continueBtn')) $('continueBtn').onclick=()=>{ $('saveMessage').textContent='Aguarde.'; };
+if ($('continueBtn')) $('continueBtn').onclick=()=>{ $('saveMessage').textContent='Aguarde o administrador liberar a próxima faixa.'; };
 $('previewTrackReport').onclick=()=>{
   if(!syncBridgeAdminData){
     syncBridgeNotice('Entre no Admin para carregar os resultados reais.');
