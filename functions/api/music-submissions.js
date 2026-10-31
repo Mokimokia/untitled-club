@@ -1,4 +1,4 @@
-import { db, json, HttpError, requireSameOrigin } from "./_middleware.js";
+import { db, json, HttpError, requireSameOrigin, hasAdminSession } from "./_middleware.js";
 
 const BUCKET = "music-submissions";
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -61,6 +61,43 @@ async function removeFile(env, path) {
       headers: { apikey: key, Authorization: "Bearer " + key }
     });
   } catch {}
+}
+
+
+async function signedDownload(env, path) {
+  if (!path) return null;
+  const base = String(env.SUPABASE_URL || "").replace(/\/$/, "");
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  const encoded = path.split("/").map(encodeURIComponent).join("/");
+  const response = await fetch(base + "/storage/v1/object/sign/" + BUCKET + "/" + encoded, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: "Bearer " + key,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ expiresIn: 3600 })
+  });
+  if (!response.ok) return null;
+  const data = await response.json().catch(() => ({}));
+  const signed = data.signedURL || data.signedUrl || null;
+  return signed ? (signed.startsWith("http") ? signed : base + "/storage/v1" + signed) : null;
+}
+
+export async function onRequestGet({ request, env }) {
+  try {
+    if (!await hasAdminSession(request, env)) throw new HttpError(401, "Acesso restrito ao administrador.");
+    const rows = await db(env, "music_submissions?select=*&order=submitted_at.desc&limit=200");
+    const submissions = await Promise.all((Array.isArray(rows) ? rows : []).map(async row => ({
+      ...row,
+      track1_download_url: await signedDownload(env, row.track1_file_path),
+      track2_download_url: await signedDownload(env, row.track2_file_path)
+    })));
+    return json({ submissions });
+  } catch (error) {
+    if (error instanceof HttpError) return json({ error: error.message }, error.status);
+    return json({ error: "Não foi possível carregar os envios." }, 500);
+  }
 }
 
 export async function onRequestPost({ request, env }) {
