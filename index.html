@@ -481,6 +481,7 @@ async function syncBridgeAction(action, body = {}) {
       add_minute:'Um minuto acrescentado ao cronômetro compartilhado.',
       add_track:'Faixa adicionada à sessão.',
       rename_track:'Nome da faixa atualizado.',
+      set_track_comment:'Comentário interno salvo.',
       set_entry_code:body.code ? 'Código de entrada atualizado.' : 'Código removido; entrada sem chave.',
       new_session:'Nova sessão criada. Faixas, participantes e avaliações anteriores foram removidos.',
       import_session:'Dados da sessão importados. O cronômetro foi restaurado pausado.'
@@ -1080,11 +1081,21 @@ renderTrackAdmin=function(){
     const status=document.createElement('span');status.className='status';status.setAttribute('aria-live','polite');
     save.onclick=async()=>{
       save.disabled=true;status.textContent='Salvando…';
-      await syncBridgeAction('set_track_comment',{track_id:track.id,comment:input.value});
-      const saved=(syncBridgeAdminData?.tracks||[]).find(item=>item.id===track.id);
-      if(saved && (saved.internal_comment||'')===input.value.trim())status.textContent='Salvo no controle interno';
-      else status.textContent='Não foi possível confirmar. Confira o aviso do painel.';
-      save.disabled=false;
+      try{
+        const response=await syncBridgeRequest('/api/session-state',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action:'set_track_comment',track_id:track.id,comment:input.value})
+        });
+        if(response.admin)syncBridgeAdminData=response.admin;
+        syncBridgeApply(response);
+        const saved=(response.admin?.tracks||[]).find(item=>item.id===track.id);
+        if(!saved || (saved.internal_comment||'')!==input.value.trim())throw new Error('O servidor não confirmou o comentário.');
+        status.textContent='Salvo no controle interno';
+        syncBridgeNotice('Comentário interno atualizado para '+track.name+'.');
+      }catch(error){
+        status.textContent='Falha ao salvar: '+error.message;
+        syncBridgeNotice(error.message);
+      }finally{save.disabled=false;}
     };
     wrap.append(label,input,save,status);nameCell.appendChild(wrap);
   });
