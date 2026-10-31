@@ -195,6 +195,9 @@ function updateTrack(){
   renderCriteria();
 }
 function nav(page){
+  const isSubmissionPage=page==='submissions';
+  $('statusPill')?.classList.toggle('hidden',isSubmissionPage);
+  $('sessionTag')?.classList.toggle('hidden',isSubmissionPage);
   document.querySelectorAll('.content>section').forEach(section=>section.classList.add('hidden'));
   $('page-'+page)?.classList.remove('hidden');
   document.querySelectorAll('.navbtn').forEach(button=>button.classList.toggle('active',button.dataset.page===page));
