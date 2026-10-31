@@ -51,6 +51,25 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 #page-submissions .submission-grid>label{min-width:0!important;width:100%!important}
 #page-submissions .submission-grid>label.full{grid-column:1/-1!important}
 @media(max-width:700px){main>#page-submissions.submission-standalone{padding:0 12px!important}#page-submissions .submission-grid{grid-template-columns:minmax(0,1fr)!important}#page-submissions .submission-grid>label.full{grid-column:1!important}}
+
+<style id="secret-admin-trigger-fix">
+.topbar .secret-admin-trigger{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  position:relative!important;
+  z-index:20!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+.topbar .secret-admin-trigger,
+.topbar .secret-admin-trigger *,
+.topbar .secret-admin-trigger img{
+  cursor:pointer!important;
+  pointer-events:auto!important;
+}
+</style>
 </style>
 </head>
 <body><div id="app" data-sites-preview-theme="custom">
