@@ -82,6 +82,18 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 }
 .login-admin-trigger:hover,.login-admin-trigger:active{background:#101010!important;color:#f1e6cf!important;transform:none!important;box-shadow:none!important;filter:none!important}\n.login-admin-trigger{transition:none!important;animation:none!important}
 </style>
+
+<style id="hide-public-submission-outside-artist-flow">
+/* O formulário público só pode aparecer quando a página de submissão do participante estiver ativa. */
+#page-submissions.hidden,
+#page-submissions[hidden]{
+  display:none!important;
+}
+#sidebarAdmin #page-submissions,
+#sidebarAdmin [data-page="submissions"]{
+  display:none!important;
+}
+</style>
 </style>
 </head>
 <body><div id="app" data-sites-preview-theme="custom">
