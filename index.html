@@ -130,11 +130,25 @@ html.submission-mode-preload #loginScreen #openSubmissionFormHome{order:2!import
 .hero h1,.hero p{margin-left:auto!important;margin-right:auto!important}
 .topbar .brand{left:50%!important;right:auto!important;transform:translateX(-50%)!important}
 </style>
+<link rel="preload" as="image" href="/assets/untitled-club-soap.webp?v=4">
+<style id="untitled-club-final-layout-fix">
+/* Cabeçalho realmente centralizado, independente da largura das ações laterais */
+.topbar{position:sticky!important;min-height:76px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important}
+.topbar .brand{position:absolute!important;left:50%!important;top:50%!important;right:auto!important;transform:translate(-50%,-50%)!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;z-index:3!important}
+.topbar .brand-logo{display:block!important;width:clamp(145px,18vw,210px)!important;max-width:48vw!important;max-height:58px!important;height:auto!important;object-fit:contain!important}
+#loginScreen.submission-mode .login-box{display:flex!important;flex-direction:column!important;align-items:stretch!important}
+#loginScreen.submission-mode #loginAdminTrigger{order:0!important}
+#loginScreen.submission-mode #loginSoapLogo{order:1!important;display:block!important;visibility:visible!important;opacity:1!important;width:min(390px,82vw)!important;max-width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important;margin:26px auto 30px!important;filter:none!important}
+#loginScreen.submission-mode #openSubmissionFormHome{order:2!important}
+#loginScreen.submission-mode .login-box>*:not(#loginAdminTrigger):not(#loginSoapLogo):not(#openSubmissionFormHome){display:none!important}
+#loginScreen.submission-mode #openSubmissionFormHome{display:block!important;width:100%!important}
+@media(max-width:620px){.topbar{min-height:68px!important;padding-left:8px!important;padding-right:8px!important}.topbar .brand-logo{width:clamp(120px,38vw,160px)!important;max-height:44px!important}.top-actions{max-width:32vw!important}}
+</style>
 </head>
 <body><div id="app" data-sites-preview-theme="custom">
-<header class="topbar"><button type="button" class="brand secret-admin-trigger" aria-label="Untitled Club" title="" style="gap:0;letter-spacing:0;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;appearance:none;-webkit-appearance:none"><img class="brand-logo" src="/assets/untitled-club-soap.webp" alt="untitled Club" style="display:block;width:clamp(150px,17vw,205px);height:auto;max-width:55vw;object-fit:contain;pointer-events:none"></button><div class="top-actions"><span class="pill" id="statusPill" aria-live="polite">● Conectando ao servidor…</span><span class="participant-label hidden" id="headerParticipant">Participante</span><button type="button" class="logout-btn hidden" id="logoutParticipant">SAIR</button></div></header>
+<header class="topbar"><button type="button" class="brand secret-admin-trigger" aria-label="Untitled Club" title="" style="gap:0;letter-spacing:0;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;appearance:none;-webkit-appearance:none"><img class="brand-logo" src="/assets/untitled-club-soap.webp?v=4" alt="untitled Club" style="display:block;width:clamp(150px,17vw,205px);height:auto;max-width:55vw;object-fit:contain;pointer-events:none"></button><div class="top-actions"><span class="pill" id="statusPill" aria-live="polite">● Conectando ao servidor…</span><span class="participant-label hidden" id="headerParticipant">Participante</span><button type="button" class="logout-btn hidden" id="logoutParticipant">SAIR</button></div></header>
 <main>
-<section class="login-screen" id="loginScreen"><form class="login-box" id="loginForm"><button type="button" id="loginAdminTrigger" class="login-admin-trigger" aria-label="Acesso administrativo">UNTITLED CLUB / LISTENING SESSION</button><img id="loginSoapLogo" class="login-logo" src="/assets/untitled-club-soap.webp?v=3" alt="Untitled Club — logo sabonete vermelha" style="display:block;width:min(300px,78vw);height:auto;margin:22px auto 26px;object-fit:contain"><h1>Antes de começar<br>identifique-se <span style="font-family:Arial,sans-serif;font-size:.22em;letter-spacing:0;vertical-align:middle;text-transform:none;font-weight:400;white-space:nowrap">(ou não)</span></h1><label for="participantNameInput">Nome do participante *</label><input class="field" id="participantNameInput" name="participantName" autocomplete="name" required maxlength="80"><label for="participantCodeInput">Código de acesso</label><input class="field" id="participantCodeInput" maxlength="40"><div class="login-error" id="loginError" aria-live="polite"></div><button class="btn primary" type="submit" style="width:100%;margin-top:10px">Entrar na sessão →</button><button class="btn submission-entry" type="button" id="openSubmissionFormHome" style="display:block;width:100%;margin-top:10px;background:#e52b23;color:#fff5df;border:2px solid #e52b23">ENVIAR MINHAS MÚSICAS ↗</button></form></section>
+<section class="login-screen" id="loginScreen"><form class="login-box" id="loginForm"><button type="button" id="loginAdminTrigger" class="login-admin-trigger" aria-label="Acesso administrativo">UNTITLED CLUB / LISTENING SESSION</button><img id="loginSoapLogo" class="login-logo" src="/assets/untitled-club-soap.webp?v=4" alt="Untitled Club — logo sabonete vermelha" style="display:block;width:min(300px,78vw);height:auto;margin:22px auto 26px;object-fit:contain"><h1>Antes de começar<br>identifique-se <span style="font-family:Arial,sans-serif;font-size:.22em;letter-spacing:0;vertical-align:middle;text-transform:none;font-weight:400;white-space:nowrap">(ou não)</span></h1><label for="participantNameInput">Nome do participante *</label><input class="field" id="participantNameInput" name="participantName" autocomplete="name" required maxlength="80"><label for="participantCodeInput">Código de acesso</label><input class="field" id="participantCodeInput" maxlength="40"><div class="login-error" id="loginError" aria-live="polite"></div><button class="btn primary" type="submit" style="width:100%;margin-top:10px">Entrar na sessão →</button><button class="btn submission-entry" type="button" id="openSubmissionFormHome" style="display:block;width:100%;margin-top:10px;background:#e52b23;color:#fff5df;border:2px solid #e52b23">ENVIAR MINHAS MÚSICAS ↗</button></form></section>
 <section class="hero"><div><h1 id="pageTitle">Untitled club</h1><p id="pageDesc">Sua percepção importa. Avalie cada faixa individualmente; suas respostas são privadas e não aparecem para os outros participantes.</p></div><div class="tag" id="sessionTag">CARREGANDO SESSÃO…</div></section>
 <div class="layout" id="layout"><aside class="sidebar" id="sidebarArtist"><button class="navbtn active" data-page="listen"><span class="navicon">◉</span> Avaliar música</button><button class="navbtn" data-page="artistDone"><span class="navicon">✓</span> Minhas avaliações</button></aside><aside class="sidebar hidden" id="sidebarAdmin"><button class="navbtn active" data-page="dashboard"><span class="navicon">▦</span> Visão geral</button><button class="navbtn" data-page="tracks"><span class="navicon">♫</span> Faixas e sessão</button><button class="navbtn" data-page="participants"><span class="navicon">♙</span> Participantes</button><button class="navbtn" data-page="reports"><span class="navicon">▤</span> Relatórios</button><button class="navbtn" data-page="submissionsAdmin"><span class="navicon">↧</span> Submissões</button></aside>
 <div class="content">
@@ -537,6 +551,7 @@ function syncBridgeApply(state) {
   tracks.splice(0, tracks.length, ...nextTracks);
   syncBridgeState = state;
   const submissionMode=Boolean(state.session.submission_mode);
+  try { localStorage.setItem('untitledClubSubmissionMode', submissionMode ? '1' : '0'); } catch (error) {}
   $('loginScreen')?.classList.toggle('submission-mode',submissionMode);
   document.documentElement.classList.add('app-ready');
   if($('toggleSubmissionMode')){ $('toggleSubmissionMode').textContent=submissionMode?'Desativar modo envio':'Ativar modo envio'; $('toggleSubmissionMode').classList.toggle('danger',submissionMode); }
@@ -607,6 +622,7 @@ async function syncBridgePoll() {
       syncBridgeRenderAdminData();
     }
   } catch (error) {
+    if (!syncBridgeHasLoaded) document.documentElement.classList.add('app-ready');
     if ($('statusPill')) {
       $('statusPill').textContent = '● Sincronização pendente';
       $('statusPill').title = error.message;
@@ -1391,7 +1407,6 @@ $('exportCsv').onclick=()=>{
 setInterval(syncBridgeClock,250);
 setInterval(syncBridgePoll,1500);
 setInterval(()=>{if(syncBridgeParticipantId)syncBridgeParticipantPoll();},2500);
-setTimeout(()=>document.documentElement.classList.add('app-ready'),5000);
 syncBridgePoll();
 syncBridgeParticipantPoll();
 
