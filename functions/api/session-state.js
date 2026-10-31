@@ -88,7 +88,8 @@ async function buildImportedData(session, backup) {
       id, name,
       track_type: track.track_type === "reference" || track.type === "Referência" ? "reference" : "unreleased",
       position: i + 1,
-      status: "pending"
+      status: "pending",
+      internal_comment: typeof track?.internal_comment === "string" ? track.internal_comment.slice(0, 2000) : null
     };
   });
   const requestedActiveId = String(backup.session?.active_track_id || "");
@@ -164,15 +165,18 @@ async function getTrackAtPosition(env, sessionId, position) {
 }
 
 async function loadAdminData(env, sessionId) {
-  const [participants, ratings] = await Promise.all([
+  const [participants, ratings, tracks] = await Promise.all([
     db(env, "participants?session_id=eq." + encodeURIComponent(sessionId) +
       "&select=id,display_name,joined_at,last_seen_at&order=joined_at.asc"),
     db(env, "ratings?session_id=eq." + encodeURIComponent(sessionId) +
-      "&select=id,participant_id,track_id,initial_impression,melody,composition,production,vocal_performance,originality,emotional_connection,commercial_potential,replay_memorability,overall,liked,improve,is_submitted,created_at,updated_at,submitted_at&order=updated_at.desc")
+      "&select=id,participant_id,track_id,initial_impression,melody,composition,production,vocal_performance,originality,emotional_connection,commercial_potential,replay_memorability,overall,liked,improve,is_submitted,created_at,updated_at,submitted_at&order=updated_at.desc"),
+    db(env, "tracks?session_id=eq." + encodeURIComponent(sessionId) +
+      "&select=id,internal_comment&order=position.asc")
   ]);
   return {
     participants: Array.isArray(participants) ? participants : [],
     ratings: Array.isArray(ratings) ? ratings : [],
+    tracks: Array.isArray(tracks) ? tracks : [],
   };
 }
 
@@ -291,6 +295,19 @@ async function act(env, action, body) {
       method: "PATCH",
       body: JSON.stringify({ name }),
     });
+  } else if (action === "set_track_comment") {
+    const trackId = typeof body.track_id === "string" ? body.track_id.trim() : "";
+    const comment = typeof body.comment === "string" ? body.comment : "";
+    if (!/^[0-9a-f-]{36}$/i.test(trackId)) throw new HttpError(400, "Identificador de faixa inválido.");
+    if (comment.length > 2000) throw new HttpError(400, "O comentário interno deve ter no máximo 2.000 caracteres.");
+    const target = await db(env, "tracks?session_id=eq." + encodeURIComponent(session.id) +
+      "&id=eq." + encodeURIComponent(trackId) + "&select=id&limit=1");
+    if (!Array.isArray(target) || !target.length) throw new HttpError(404, "Faixa não encontrada nesta sessão.");
+    await db(env, "tracks?session_id=eq." + encodeURIComponent(session.id) +
+      "&id=eq." + encodeURIComponent(trackId), {
+        method: "PATCH",
+        body: JSON.stringify({ internal_comment: comment.trim() || null }),
+      });
   } else if (action === "new_session") {
     await replaceSessionData(env, session, {
       name: "Untitled Club",
@@ -303,6 +320,13 @@ async function act(env, action, body) {
     const backup = body.backup;
     const imported = await buildImportedData(session, backup);
     await replaceSessionData(env, session, imported);
+    const tracksWithComments = imported.tracks.filter(track => track.internal_comment);
+    await Promise.all(tracksWithComments.map(track => db(env,
+      "tracks?session_id=eq." + encodeURIComponent(session.id) + "&id=eq." + encodeURIComponent(track.id), {
+        method: "PATCH",
+        body: JSON.stringify({ internal_comment: track.internal_comment }),
+      }
+    )));
   } else {
     throw new HttpError(400, "Ação desconhecida.");
   }
