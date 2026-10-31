@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const code = typeof body.code === "string" ? body.code.trim() : "";
     if (!name || name.length > 80) throw new HttpError(400, "Informe um nome de 1 a 80 caracteres.");
-    await enforceRateLimit(request, env, "participant-login", 12, 300);
+    await enforceRateLimit(request, env, "participant-login", 100, 300);
     if (!env.ADMIN_PASSWORD) throw new HttpError(503, "O servidor ainda não foi configurado. O administrador precisa revisar os Secrets do Cloudflare.");
     const session = await readSession(env);
     if (session.status !== "open") throw new HttpError(409, "A sessão está encerrada. Aguarde o administrador reabri-la.");
