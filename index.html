@@ -988,18 +988,19 @@ async function syncBridgeLoginAdmin(fromLoginScreen = false) {
 }
 let secretAdminClicks = 0;
 let secretAdminLastClick = 0;
-document.addEventListener('click', event => {
-  const trigger = event.target.closest('.topbar .secret-admin-trigger');
-  if (!trigger) return;
-  const now = Date.now();
-  secretAdminClicks = now - secretAdminLastClick <= 2500 ? secretAdminClicks + 1 : 1;
-  secretAdminLastClick = now;
-  if (secretAdminClicks >= 4) {
-    secretAdminClicks = 0;
-    secretAdminLastClick = 0;
-    syncBridgeLoginAdmin(true);
-  }
-}, true);
+const secretAdminTrigger = document.querySelector('.topbar .secret-admin-trigger');
+if (secretAdminTrigger) {
+  secretAdminTrigger.addEventListener('click', () => {
+    const now = Date.now();
+    secretAdminClicks = now - secretAdminLastClick <= 8000 ? secretAdminClicks + 1 : 1;
+    secretAdminLastClick = now;
+    if (secretAdminClicks >= 4) {
+      secretAdminClicks = 0;
+      secretAdminLastClick = 0;
+      syncBridgeLoginAdmin(true);
+    }
+  });
+}
 $('artistMode').onclick=()=>switchMode('artist');
 $('submitRating').onclick=async()=>{
   const currentRatings=ratings[current]||{};
