@@ -99,7 +99,8 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 <style id="submission-mode-styles">
 #openSubmissionFormHome{display:none!important}
 #loginScreen.submission-mode #openSubmissionFormHome{display:block!important}
-#loginScreen.submission-mode .login-box>*:not(#loginAdminTrigger):not(#openSubmissionFormHome){display:none!important}
+#loginScreen.submission-mode .login-box>*:not(#loginAdminTrigger):not(.login-logo):not(#openSubmissionFormHome){display:none!important}
+#loginScreen.submission-mode .login-logo{display:block!important;width:min(420px,78vw)!important;height:auto!important;margin:30px auto 28px!important;object-fit:contain}
 #loginScreen.submission-mode #loginAdminTrigger{display:block!important;width:100%;margin-bottom:22px}
 #loginScreen.submission-mode #openSubmissionFormHome{margin-top:0!important}
 .submission-mode-admin{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}
