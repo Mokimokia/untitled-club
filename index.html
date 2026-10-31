@@ -718,7 +718,7 @@ async function syncBridgeGetBackup() {
       timer_duration_seconds: state.session.timer_duration_seconds,
       timer_running: state.session.timer_running
     },
-    tracks: state.tracks,
+    tracks: state.tracks.map(track => ({...track, internal_comment: (state.admin.tracks || []).find(note => note.id === track.id)?.internal_comment || ''})),
     participants: state.admin.participants || [],
     ratings: state.admin.ratings || []
   };
@@ -743,7 +743,7 @@ async function syncBridgeExportSessionDocument() {
       const rows=backup.ratings.filter(r=>r.track_id===track.id && r.is_submitted);
       const values=rows.map(r=>r.overall).filter(v=>v!==null && v!==undefined).map(Number);
       const avg=values.length?fmt(values.reduce((a,b)=>a+b,0)/values.length):'—';
-      return '<tr><td>'+esc(track.position)+'</td><td>'+esc(track.name)+'</td><td>'+esc(track.track_type==='reference'?'Referência':'Inédita')+'</td><td>'+avg+'</td><td>'+rows.length+'</td></tr>';
+      return '<tr><td>'+esc(track.position)+'</td><td>'+esc(track.name)+'</td><td>'+esc(track.internal_comment||'')+'</td><td>'+esc(track.track_type==='reference'?'Referência':'Inédita')+'</td><td>'+avg+'</td><td>'+rows.length+'</td></tr>';
     }).join('');
     const criteria = [
       ['initial_impression','Impressão inicial'],['melody','Melodia'],['composition','Composição'],
@@ -763,7 +763,7 @@ async function syncBridgeExportSessionDocument() {
       const scores=criteria.map(([field,label])=>'<td>'+esc(r[field]??'—')+'</td>').join('');
       return '<tr><td>'+esc(person)+'</td><td>'+esc(track)+'</td>'+scores+'<td>'+esc(r.liked||'')+'</td><td>'+esc(r.improve||'')+'</td></tr>';
     }).join('');
-    const htmlDoc='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório Untitled Club</title><style>body{font:14px Arial,sans-serif;color:#222;margin:36px}h1,h2{margin-bottom:8px}p{color:#555}.summary{display:flex;gap:24px;flex-wrap:wrap;margin:20px 0}.summary div{padding:12px;border:1px solid #ddd;min-width:120px}table{width:100%;border-collapse:collapse;margin:14px 0 30px;font-size:12px}th,td{border:1px solid #ddd;padding:7px;text-align:left}th{background:#f0f0f0}section{margin-top:30px}.feedback{font-size:10px;word-break:break-word}@media print{body{margin:12mm}h2{break-after:avoid}tr{break-inside:avoid}.feedback{font-size:8px}}</style></head><body><h1>untitled Club — Relatório da sessão</h1><p>Exportado em '+esc(new Date(backup.exported_at).toLocaleString('pt-BR'))+'. O cronômetro não é iniciado por uma exportação ou importação.</p><div class="summary"><div><strong>'+backup.participants.length+'</strong><br>Participantes</div><div><strong>'+backup.tracks.length+'</strong><br>Faixas</div><div><strong>'+submitted.length+'</strong><br>Avaliações enviadas</div></div><section><h2>Ranking por faixa</h2><table><thead><tr><th>#</th><th>Faixa</th><th>Tipo</th><th>Overall médio</th><th>Votos</th></tr></thead><tbody>'+tracks+'</tbody></table></section><section><h2>Médias por critério</h2><table><thead><tr><th>Critério</th><th>Média</th><th>Notas</th></tr></thead><tbody>'+averages+'</tbody></table></section><section><h2>Feedback enviado</h2><table class="feedback"><thead><tr><th>Participante</th><th>Faixa</th>'+criteria.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'<th>O que funcionou</th><th>O que melhorar</th></tr></thead><tbody>'+feedback+'</tbody></table></section><p>Este documento contém informações de avaliações privadas. Compartilhe apenas com pessoas autorizadas.</p><style id="untitled-club-live-rating-controls">#criteriaList .stars{display:flex!important;flex-wrap:wrap!important;gap:5px!important;align-items:center!important}#criteriaList .star{display:inline-flex!important;align-items:center!important;justify-content:center!important;font:600 12px/1 Inter,Arial,sans-serif!important;width:31px!important;min-width:29px!important;height:28px!important;padding:0!important;border:1px solid var(--border)!important;border-radius:6px!important;background:transparent!important;color:var(--site-on-background)!important;overflow:visible!important}#criteriaList .star.selected{background:var(--site-primary)!important;border-color:var(--site-primary)!important;color:var(--site-on-primary)!important}</style></body></html>';
+    const htmlDoc='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório Untitled Club</title><style>body{font:14px Arial,sans-serif;color:#222;margin:36px}h1,h2{margin-bottom:8px}p{color:#555}.summary{display:flex;gap:24px;flex-wrap:wrap;margin:20px 0}.summary div{padding:12px;border:1px solid #ddd;min-width:120px}table{width:100%;border-collapse:collapse;margin:14px 0 30px;font-size:12px}th,td{border:1px solid #ddd;padding:7px;text-align:left}th{background:#f0f0f0}section{margin-top:30px}.feedback{font-size:10px;word-break:break-word}@media print{body{margin:12mm}h2{break-after:avoid}tr{break-inside:avoid}.feedback{font-size:8px}}</style></head><body><h1>untitled Club — Relatório da sessão</h1><p>Exportado em '+esc(new Date(backup.exported_at).toLocaleString('pt-BR'))+'. O cronômetro não é iniciado por uma exportação ou importação.</p><div class="summary"><div><strong>'+backup.participants.length+'</strong><br>Participantes</div><div><strong>'+backup.tracks.length+'</strong><br>Faixas</div><div><strong>'+submitted.length+'</strong><br>Avaliações enviadas</div></div><section><h2>Ranking por faixa</h2><table><thead><tr><th>#</th><th>Faixa</th><th>Comentário interno</th><th>Tipo</th><th>Overall médio</th><th>Votos</th></tr></thead><tbody>'+tracks+'</tbody></table></section><section><h2>Médias por critério</h2><table><thead><tr><th>Critério</th><th>Média</th><th>Notas</th></tr></thead><tbody>'+averages+'</tbody></table></section><section><h2>Feedback enviado</h2><table class="feedback"><thead><tr><th>Participante</th><th>Faixa</th>'+criteria.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'<th>O que funcionou</th><th>O que melhorar</th></tr></thead><tbody>'+feedback+'</tbody></table></section><p>Este documento contém informações de avaliações privadas. Compartilhe apenas com pessoas autorizadas.</p><style id="untitled-club-live-rating-controls">#criteriaList .stars{display:flex!important;flex-wrap:wrap!important;gap:5px!important;align-items:center!important}#criteriaList .star{display:inline-flex!important;align-items:center!important;justify-content:center!important;font:600 12px/1 Inter,Arial,sans-serif!important;width:31px!important;min-width:29px!important;height:28px!important;padding:0!important;border:1px solid var(--border)!important;border-radius:6px!important;background:transparent!important;color:var(--site-on-background)!important;overflow:visible!important}#criteriaList .star.selected{background:var(--site-primary)!important;border-color:var(--site-primary)!important;color:var(--site-on-primary)!important}</style></body></html>';
     syncBridgeDownload('untitled-club-relatorio-'+new Date().toISOString().slice(0,10)+'.html',htmlDoc,'text/html;charset=utf-8');
     if ($('sessionToolsStatus')) $('sessionToolsStatus').textContent = 'Documento exportado. Abra o HTML e use Imprimir → Salvar como PDF se precisar de um PDF.';
   } catch (error) {
@@ -1039,11 +1039,12 @@ $('previewReport').onclick=()=>{
 };
 $('exportCsv').onclick=()=>{
   if(!syncBridgeAdminData)return;
-  const rows=[['Participante','Faixa','Tipo','Impressão inicial','Melodia','Composição','Produção','Vocal','Originalidade','Conexão emocional','Potencial comercial','Replay','Overall','O que funcionou','O que melhorar','Enviada']];
+  const rows=[['Participante','Faixa','Comentário interno da faixa','Tipo','Impressão inicial','Melodia','Composição','Produção','Vocal','Originalidade','Conexão emocional','Potencial comercial','Replay','Overall','O que funcionou','O que melhorar','Enviada']];
+  const trackComments=new Map((syncBridgeAdminData.tracks||[]).map(t=>[t.id,t.internal_comment||'']));
   const participants=new Map((syncBridgeAdminData.participants||[]).map(p=>[p.id,p.display_name]));
   (syncBridgeAdminData.ratings||[]).forEach(r=>{
     const track=tracks.find(t=>t.id===r.track_id);
-    rows.push([participants.get(r.participant_id)||'',track?.name||'',track?.type||'',r.initial_impression,r.melody,r.composition,r.production,r.vocal_performance,r.originality,r.emotional_connection,r.commercial_potential,r.replay_memorability,r.overall,r.liked||'',r.improve||'',r.is_submitted?'Sim':'Não']);
+    rows.push([participants.get(r.participant_id)||'',track?.name||'',trackComments.get(r.track_id)||'',track?.type||'',r.initial_impression,r.melody,r.composition,r.production,r.vocal_performance,r.originality,r.emotional_connection,r.commercial_potential,r.replay_memorability,r.overall,r.liked||'',r.improve||'',r.is_submitted?'Sim':'Não']);
   });
   const csv='\ufeff'+rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -1056,6 +1057,53 @@ syncBridgePoll();
 syncBridgeParticipantPoll();
 
 updateTrack();renderAdmin();renderParticipants();syncTimerUI();
+
+// Comentários internos por faixa. O endpoint só devolve esta coleção após autenticação Admin.
+const adminTrackCommentsStyle=document.createElement('style');
+adminTrackCommentsStyle.textContent='.admin-track-comment{display:block;margin-top:8px;max-width:360px}.admin-track-comment label{display:block;margin-bottom:4px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.admin-track-comment textarea{display:block;width:min(360px,44vw);min-width:210px;min-height:58px;padding:8px 10px;border:1.5px solid var(--border);border-radius:0;background:#fff8e9;color:#111;font:12px/1.4 Arial,sans-serif;resize:vertical}.admin-track-comment .btn{margin-top:5px;padding:7px 10px;font-size:10px}.admin-track-comment .status{display:inline-block;margin-left:8px;font-size:10px;color:var(--green)}@media(max-width:650px){.admin-track-comment textarea{width:100%;min-width:0}.person:has(.admin-track-comment){align-items:flex-start;flex-wrap:wrap}.person:has(.admin-track-comment)>span:first-child{width:100%}}';
+document.head.appendChild(adminTrackCommentsStyle);
+const renderTrackAdminBeforeComments=renderTrackAdmin;
+renderTrackAdmin=function(){
+  renderTrackAdminBeforeComments();
+  if(!syncBridgeAdminAuthenticated||!syncBridgeAdminData)return;
+  const privateComments=new Map((syncBridgeAdminData.tracks||[]).map(item=>[item.id,item.internal_comment||'']));
+  $('trackAdminList')?.querySelectorAll('[data-open-track]').forEach(button=>{
+    const index=Number(button.dataset.openTrack),track=tracks[index],row=button.closest('.person');
+    const nameCell=row?.querySelector(':scope > span:first-child');
+    if(!track?.id||!nameCell||nameCell.querySelector('.admin-track-comment'))return;
+    const wrap=document.createElement('div');wrap.className='admin-track-comment';
+    const label=document.createElement('label');label.textContent='Comentário interno · somente admin';
+    const input=document.createElement('textarea');input.maxLength=2000;input.rows=2;
+    input.value=privateComments.get(track.id)||'';input.placeholder='Anotações privadas sobre esta faixa…';
+    input.setAttribute('aria-label','Comentário interno de '+track.name);
+    const save=document.createElement('button');save.type='button';save.className='btn';save.textContent='Salvar comentário';
+    const status=document.createElement('span');status.className='status';status.setAttribute('aria-live','polite');
+    save.onclick=async()=>{
+      save.disabled=true;status.textContent='Salvando…';
+      await syncBridgeAction('set_track_comment',{track_id:track.id,comment:input.value});
+      const saved=(syncBridgeAdminData?.tracks||[]).find(item=>item.id===track.id);
+      if(saved && (saved.internal_comment||'')===input.value.trim())status.textContent='Salvo no controle interno';
+      else status.textContent='Não foi possível confirmar. Confira o aviso do painel.';
+      save.disabled=false;
+    };
+    wrap.append(label,input,save,status);nameCell.appendChild(wrap);
+  });
+};
+const previewTrackReportBeforePrivateComment=$('previewTrackReport').onclick;
+$('previewTrackReport').onclick=function(event){
+  const result=previewTrackReportBeforePrivateComment?.call(this,event);
+  if(!syncBridgeAdminAuthenticated||!syncBridgeAdminData)return result;
+  const index=Number($('reportTrack')?.value),track=tracks[index];
+  if(!track)return result;
+  const comment=(syncBridgeAdminData.tracks||[]).find(item=>item.id===track.id)?.internal_comment||'';
+  if(comment.trim()&&$('reportPreview')){
+    const box=document.createElement('section');box.className='card';box.style.margin='16px 0 0';
+    const heading=document.createElement('div');heading.className='eyebrow';heading.textContent='Comentário interno · confidencial';
+    const body=document.createElement('p');body.style.whiteSpace='pre-wrap';body.textContent=comment;
+    box.append(heading,body);$('reportPreview').appendChild(box);
+  }
+  return result;
+};
 </script>
 <!--sites-preview-theme:start-->
 <style data-sites-preview-theme>:root{--site-primary:light-dark(#000000,#fff) !important;--site-background:light-dark(#ffffff,#000) !important;--site-on-background:light-dark(#000000,#fff) !important;--site-radius-scale:0.5 !important;--site-font-body:system-ui,sans-serif !important}
