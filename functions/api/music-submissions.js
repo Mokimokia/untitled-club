@@ -172,7 +172,7 @@ export async function onRequestDelete({ request, env }) {
       .flatMap(row => [row.track1_file_path, row.track2_file_path])
       .filter(Boolean);
     if (prefixes.length) {
-      const base = String(env.SUPABASE_URL || "").replace(/\\/$/, "");
+      const base = String(env.SUPABASE_URL || "").replace(/\/$/, "");
       const key = env.SUPABASE_SERVICE_ROLE_KEY;
       const response = await fetch(base + "/storage/v1/object/" + BUCKET, {
         method: "DELETE",
