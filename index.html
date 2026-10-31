@@ -966,13 +966,13 @@ function comparisonPdfMean(rows,field){
   return {value:values.length?values.reduce((sum,value)=>sum+value,0)/values.length:null,count:values.length};
 }
 function comparisonPdfCanvasText(ctx,value,x,y,size,color='#111111',weight=400,maxWidth){
-  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif;
+  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif';
   ctx.fillStyle=color;
   ctx.textBaseline='alphabetic';
   ctx.fillText(String(value??''),x,y,maxWidth);
 }
 function comparisonPdfWrap(ctx,value,x,y,width,lineHeight,size,color='#111111',weight=400,maxLines=30){
-  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif;
+  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif';
   ctx.fillStyle=color;ctx.textBaseline='alphabetic';
   const words=String(value??'').split(/\s+/);let line='',lines=0;
   for(const word of words){
@@ -1011,7 +1011,7 @@ function comparisonPdfJpeg(canvas){
     },'image/jpeg',0.96);
   });
 }
-async function comparisonPdfBuild(canvases){
+async async function comparisonPdfBuild(canvases){
   const encoder=new TextEncoder(),objects=[];
   objects.push(encoder.encode('<< /Type /Catalog /Pages 2 0 R >>'));
   const pageIds=canvases.map((_,index)=>3+index*3);
