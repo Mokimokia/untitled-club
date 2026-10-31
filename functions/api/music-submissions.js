@@ -163,4 +163,36 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
-export async function onRequestPut() { return json({ error: "Método não permitido." }, 405, { Allow: "GET, POST" }); }
+export async function onRequestDelete({ request, env }) {
+  try {
+    requireSameOrigin(request);
+    if (!await hasAdminSession(request, env)) throw new HttpError(401, "Acesso restrito ao administrador.");
+    const rows = await db(env, "music_submissions?select=id,track1_file_path,track2_file_path&limit=1000");
+    const prefixes = (Array.isArray(rows) ? rows : [])
+      .flatMap(row => [row.track1_file_path, row.track2_file_path])
+      .filter(Boolean);
+    if (prefixes.length) {
+      const base = String(env.SUPABASE_URL || "").replace(/\\/$/, "");
+      const key = env.SUPABASE_SERVICE_ROLE_KEY;
+      const response = await fetch(base + "/storage/v1/object/" + BUCKET, {
+        method: "DELETE",
+        headers: {
+          apikey: key,
+          Authorization: "Bearer " + key,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prefixes })
+      });
+      if (!response.ok) {
+        throw new HttpError(502, "Não foi possível apagar todos os arquivos de áudio. Os registros foram preservados.");
+      }
+    }
+    await db(env, "music_submissions?id=not.is.null", { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    return json({ ok: true, deleted: Array.isArray(rows) ? rows.length : 0 });
+  } catch (error) {
+    if (error instanceof HttpError) return json({ error: error.message }, error.status);
+    return json({ error: "Não foi possível limpar os envios." }, 500);
+  }
+}
+
+export async function onRequestPut() { return json({ error: "Método não permitido." }, 405, { Allow: "GET, POST, DELETE" }); }
