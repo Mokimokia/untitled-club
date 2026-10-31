@@ -27,7 +27,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 /* Native music submission form */
 .submission-card{max-width:900px;margin:0 auto}.submission-intro{padding:14px 16px;margin:18px 0;background:#151f23;border:1px solid #334047;border-radius:10px;color:#bdc8c8;font-size:12px;line-height:1.6}.submission-form{display:block}.submission-section{padding:20px 0;border-top:1px solid var(--border)}.submission-section-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:16px;color:var(--site-primary);font-size:10px;font-weight:800;letter-spacing:.12em}.submission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.submission-grid label{display:flex;flex-direction:column;gap:8px;color:#d7dfdc;font-size:12px;font-weight:650}.submission-grid .full{grid-column:1/-1}.submission-grid .field{width:100%;margin-top:0}.file-field{padding:14px;border:1px dashed #58666b;border-radius:10px;background:#0d1519}.field-file{width:100%;font:inherit;color:#d8dfdd;font-size:12px}.field-file::file-selector-button{margin-right:12px;padding:9px 12px;border:1px solid #58666b;border-radius:7px;background:#202d32;color:#f4f0e8;font-weight:700}.file-help{display:block;color:#87969a;font-size:10px;line-height:1.5}.optional-track{padding:16px;border:1px solid var(--border);border-radius:12px;margin:10px 0 20px;background:#0e171b}.add-track-toggle{display:flex;align-items:center;gap:12px;cursor:pointer;color:#f2eee5;font-size:13px}.add-track-toggle input{accent-color:var(--site-primary);width:18px;height:18px}.add-track-toggle span{display:flex;flex-direction:column;gap:4px}.add-track-toggle small{color:var(--muted);font-size:11px;font-weight:400}.submission-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.submission-actions .btn{min-width:220px}.submission-message{min-height:20px;margin:12px 0 0;color:#ff9c91;font-size:12px}.submission-message.success{color:#78d5a5}.submission-success{text-align:center;padding:44px 12px}.submission-success .bigcheck{font-size:48px;color:var(--green)}.submission-success h3{font-size:20px;margin:8px 0}.submission-back{margin-top:10px}.submission-honeypot{position:absolute!important;left:-10000px!important;opacity:0!important}.layout.submission-public{grid-template-columns:1fr}.layout.submission-public .sidebar{display:none!important}
 @media(max-width:620px){.submission-grid{grid-template-columns:1fr}.submission-grid .full{grid-column:auto}.submission-section{padding:16px 0}.submission-actions{align-items:stretch}.submission-actions .btn{width:100%}.submission-section-head{font-size:9px}}
-</style>
+\n.submission-admin-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.submission-admin-track{padding:12px 0;border-top:1px solid var(--border)}.submission-admin-track strong{font-size:13px}.submission-admin-track p{margin:6px 0}\n</style>
 <style>
 .stars{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .star{font-size:12px;width:31px;min-width:28px;height:28px;line-height:1;position:relative;color:#aab4b7;overflow:hidden;border:1px solid #405057;border-radius:6px}
@@ -48,7 +48,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 <main>
 <section class="login-screen" id="loginScreen"><form class="login-box" id="loginForm"><img class="login-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:min(220px,100%);height:auto;margin:0 auto 20px"><h1>Antes de começar<br>identifique-se <span style="font-family:Arial,sans-serif;font-size:.22em;letter-spacing:0;vertical-align:middle;text-transform:none;font-weight:400;white-space:nowrap">(ou não)</span></h1><label for="participantNameInput">Nome do participante *</label><input class="field" id="participantNameInput" name="participantName" autocomplete="name" required maxlength="80"><label for="participantCodeInput">Código de acesso</label><input class="field" id="participantCodeInput" maxlength="40"><div class="login-error" id="loginError" aria-live="polite"></div><button class="btn primary" type="submit" style="width:100%;margin-top:10px">Entrar na sessão →</button><button class="btn submission-entry" type="button" id="openSubmissionFormHome" style="display:block;width:100%;margin-top:10px;background:#e52b23;color:#fff5df;border:2px solid #e52b23">ENVIAR MINHAS MÚSICAS ↗</button></form></section>
 <section class="hero"><div><h1 id="pageTitle">Untitled club</h1><p id="pageDesc">Sua percepção importa. Avalie cada faixa individualmente; suas respostas são privadas e não aparecem para os outros participantes.</p></div><div class="tag" id="sessionTag">CARREGANDO SESSÃO…</div></section>
-<div class="layout" id="layout"><aside class="sidebar" id="sidebarArtist"><button class="navbtn active" data-page="listen"><span class="navicon">◉</span> Avaliar música</button><button class="navbtn" data-page="artistDone"><span class="navicon">✓</span> Minhas avaliações</button><button class="navbtn" data-page="submissions"><span class="navicon">＋</span> Enviar minhas músicas</button></aside><aside class="sidebar hidden" id="sidebarAdmin"><button class="navbtn active" data-page="dashboard"><span class="navicon">▦</span> Visão geral</button><button class="navbtn" data-page="tracks"><span class="navicon">♫</span> Faixas e sessão</button><button class="navbtn" data-page="participants"><span class="navicon">♙</span> Participantes</button><button class="navbtn" data-page="reports"><span class="navicon">▤</span> Relatórios</button></aside>
+<div class="layout" id="layout"><aside class="sidebar" id="sidebarArtist"><button class="navbtn active" data-page="listen"><span class="navicon">◉</span> Avaliar música</button><button class="navbtn" data-page="artistDone"><span class="navicon">✓</span> Minhas avaliações</button><button class="navbtn" data-page="submissions"><span class="navicon">＋</span> Enviar minhas músicas</button></aside><aside class="sidebar hidden" id="sidebarAdmin"><button class="navbtn active" data-page="dashboard"><span class="navicon">▦</span> Visão geral</button><button class="navbtn" data-page="tracks"><span class="navicon">♫</span> Faixas e sessão</button><button class="navbtn" data-page="participants"><span class="navicon">♙</span> Participantes</button><button class="navbtn" data-page="reports"><span class="navicon">▤</span> Relatórios</button><button class="navbtn" data-page="submissionsAdmin"><span class="navicon">↧</span> Submissões</button></aside>
 <div class="content">
 <section id="page-listen">
 <div class="card"><div class="track-head"><div class="cover">✳</div><div class="track-meta"><div class="eyebrow" id="trackType">SESSÃO PRESENCIAL</div><h2 id="trackName">Aguardando liberação</h2><div class="muted small" id="trackArtist">O DJ conduz a audição. Avalie enquanto a faixa está tocando.</div></div><span class="tag" id="trackCounter">AGUARDANDO</span></div><div class="timer-panel"><div class="timer-copy"><div class="timer-eyebrow">TEMPO RESTANTE <span>PARA AVALIAR</span></div><div id="participantTimer" class="timer-display">--:--</div><div id="participantTimerStatus" class="timer-status">Carregando estado do cronômetro…</div><div class="timer-track"><span id="participantTimerProgress"></span></div></div><div class="timer-dial" id="participantTimerDial" style="--timer-progress:100%" role="img" aria-label="Progresso do tempo"><span class="timer-dial-core">♫</span></div></div></div>
@@ -105,6 +105,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 <section id="page-tracks" class="hidden"><div class="card"><div class="eyebrow">Administração</div><h2>Faixas e sessão</h2><p class="muted small">Gerencie faixas, código de entrada e fluxo da sessão compartilhada.</p><div id="trackAdminList"></div><div class="actions"><button class="btn" id="resetSession">Reabrir sessão</button><button class="btn primary" data-goto="dashboard">Voltar ao painel</button></div></div></section>
 <section id="page-participants" class="hidden"><div class="card"><h2>Participantes</h2><p class="muted small">Status e atividade sincronizados com a sessão compartilhada.</p><div id="participantRows"></div></div></section>
 <section id="page-reports" class="hidden"><div class="card"><div class="eyebrow">Exportação</div><h2>Relatórios internos</h2><p class="muted">Consulte os resultados agrupados por música ou veja o feedback de cada participante.</p><div class="report-tabs"><button class="report-tab active" id="reportByTrack">Por música</button><button class="report-tab" id="reportByPerson">Por participante</button></div><div id="reportTrackPanel"><label class="small muted" for="reportTrack">Música</label><select class="field" id="reportTrack"></select><button class="btn primary" style="margin-top:12px" id="previewTrackReport">Ver relatório da música</button></div><div id="reportPersonPanel" class="hidden"><label class="small muted" for="reportPerson">Participante</label><select class="field" id="reportPerson"></select><button class="btn primary" style="margin-top:12px" id="previewReport">Ver relatório do participante</button></div><button class="btn" style="margin-top:12px" id="exportCsv">Exportar ranking CSV</button><div id="reportPreview" class="hidden" style="margin-top:18px"></div></div></section>
+<section id="page-submissionsAdmin" class="hidden"><div class="card"><div class="eyebrow">RECEBIDOS PELO SITE</div><h2>Envios de músicas</h2><p class="muted small">Dados e arquivos enviados pelo formulário nativo do Untitled Club. Os links de áudio são privados e expiram após uma hora.</p><div id="musicSubmissionAdminList"><p class="muted small">Carregando envios…</p></div></div></section>
 </div></div><footer class="footnote" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:9px;opacity:.78"><span style="display:flex;align-items:center;gap:5px"><span>Acesso</span><button type="button" class="mode active" id="artistMode" style="font-size:9px;padding:4px 7px">Participante</button><button type="button" class="mode" id="adminMode" style="font-size:9px;padding:4px 7px">Admin</button></span></footer>
 </main></div>
 <script>
@@ -215,6 +216,7 @@ function nav(page){
   if(page==='tracks')renderTrackAdmin();
   if(page==='participants')renderParticipants();
   if(page==='artistDone')renderMyRatings();
+  if(page==='submissionsAdmin')renderMusicSubmissionsAdmin();
 }
 function switchMode(next){
   mode=next;
@@ -1415,6 +1417,45 @@ $('musicSubmissionForm')?.addEventListener('submit',async event=>{
     button.textContent='Enviar minhas músicas ↗';
   }
 });
+
+async function renderMusicSubmissionsAdmin(){
+  const host=$('musicSubmissionAdminList');
+  if(!host)return;
+  host.replaceChildren();
+  const loading=document.createElement('p');loading.className='muted small';loading.textContent='Carregando envios…';host.appendChild(loading);
+  try{
+    const response=await fetch('/api/music-submissions',{headers:{Accept:'application/json'}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||'Não foi possível carregar os envios.');
+    host.replaceChildren();
+    const rows=Array.isArray(data.submissions)?data.submissions:[];
+    if(!rows.length){const empty=document.createElement('p');empty.className='muted small';empty.textContent='Nenhuma música enviada ainda.';host.appendChild(empty);return;}
+    const fmtSize=value=>{const n=Number(value)||0;return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';};
+    rows.forEach(row=>{
+      const card=document.createElement('article');card.className='card';card.style.background='var(--panel2)';card.style.margin='14px 0';
+      const top=document.createElement('div');top.className='submission-admin-top';
+      const who=document.createElement('div');
+      const name=document.createElement('h3');name.textContent=row.name||'Sem nome';
+      const meta=document.createElement('p');meta.className='muted small';meta.textContent=[row.email,row.social,new Date(row.submitted_at).toLocaleString('pt-BR')].filter(Boolean).join(' · ');
+      who.append(name,meta);top.append(who);card.append(top);
+      [1,2].forEach(number=>{
+        const title=row['track'+number+'_name'];if(!title)return;
+        const section=document.createElement('div');section.className='submission-admin-track';
+        const heading=document.createElement('strong');heading.textContent='Faixa '+number+' · '+title;
+        const details=document.createElement('p');details.className='muted small';details.textContent=[row['track'+number+'_artists'],row['track'+number+'_genre'],row['track'+number+'_file_name'],fmtSize(row['track'+number+'_file_size'])].filter(Boolean).join(' · ');
+        section.append(heading,details);
+        const url=row['track'+number+'_download_url'];
+        if(url){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.className='btn';link.style.display='inline-flex';link.style.marginTop='8px';link.textContent='Baixar áudio ↗';section.append(link);}
+        else{const unavailable=document.createElement('span');unavailable.className='file-help';unavailable.textContent='Link de áudio indisponível';section.append(unavailable);}
+        card.append(section);
+      });
+      host.appendChild(card);
+    });
+  }catch(error){
+    host.replaceChildren();
+    const message=document.createElement('p');message.className='submission-message';message.textContent=error.message;host.appendChild(message);
+  }
+}
 </script>
 <!--sites-preview-theme:start-->
 <style data-sites-preview-theme>:root{--site-primary:light-dark(#000000,#fff) !important;--site-background:light-dark(#ffffff,#000) !important;--site-on-background:light-dark(#000000,#fff) !important;--site-radius-scale:0.5 !important;--site-font-body:system-ui,sans-serif !important}
