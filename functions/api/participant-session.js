@@ -40,8 +40,8 @@ function validateScores(raw, isSubmitted) {
       scores[key] = null;
       continue;
     }
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 10 || value * 2 !== Math.round(value * 2)) {
-      throw new HttpError(400, "Cada nota deve estar entre 0 e 10, em incrementos de meia estrela.");
+    if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value) || value < 0 || value > 5) {
+      throw new HttpError(400, "Cada nota deve estar entre 0 e 5, em números inteiros.");
     }
     scores[key] = value;
   }
