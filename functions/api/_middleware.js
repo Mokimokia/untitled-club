@@ -64,7 +64,7 @@ export async function readSession(env) {
   const rows = await db(
     env,
     "sessions?code_hash=eq." + encodeURIComponent(SESSION_KEY) +
-      "&select=id,name,code_hash,entry_code_hash,status,active_track_id,timer_duration_seconds,timer_deadline_at,timer_running,updated_at&limit=1"
+      "&select=id,name,code_hash,entry_code_hash,status,active_track_id,timer_duration_seconds,timer_deadline_at,timer_running,submission_mode,updated_at&limit=1"
   );
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new HttpError(503, "A sessão compartilhada não foi inicializada no Supabase.");
@@ -108,6 +108,7 @@ export async function loadState(env) {
       timer_deadline_at: session.timer_deadline_at,
       timer_running: Boolean(session.timer_running),
       has_entry_code: Boolean(session.entry_code_hash),
+      submission_mode: Boolean(session.submission_mode),
       updated_at: session.updated_at,
     },
     tracks: Array.isArray(tracks) ? tracks : [],
