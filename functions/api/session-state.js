@@ -183,7 +183,9 @@ async function loadAdminData(env, sessionId) {
 async function act(env, action, body) {
   const session = await readSession(env);
   const state = await loadState(env);
-  if (action === "release") {
+  if (action === "set_submission_mode") {
+    await updateSession(env, session, { submission_mode: Boolean(body.enabled) });
+  } else if (action === "release") {
     const position = Number(body.position);
     if (!Number.isInteger(position) || position < 1 || position > 100) throw new HttpError(400, "Posição de faixa inválida.");
     if (session.status === "closed") throw new HttpError(409, "Reabra a sessão antes de liberar uma faixa.");
