@@ -1011,7 +1011,7 @@ function comparisonPdfJpeg(canvas){
     },'image/jpeg',0.96);
   });
 }
-async async function comparisonPdfBuild(canvases){
+async function comparisonPdfBuild(canvases){
   const encoder=new TextEncoder(),objects=[];
   objects.push(encoder.encode('<< /Type /Catalog /Pages 2 0 R >>'));
   const pageIds=canvases.map((_,index)=>3+index*3);
