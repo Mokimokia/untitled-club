@@ -1343,6 +1343,78 @@ $('previewTrackReport').onclick=function(event){
   }
   return result;
 };
+
+/* Public native music submission flow */
+let submissionOpenedFromHome = false;
+function openPublicSubmissionForm(){
+  submissionOpenedFromHome = true;
+  $('loginScreen')?.classList.add('hidden');
+  document.querySelector('.hero')?.classList.add('hidden');
+  $('layout')?.classList.add('submission-public');
+  nav('submissions');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$('openSubmissionFormHome')?.addEventListener('click',openPublicSubmissionForm);
+$('backFromPublicSubmission')?.addEventListener('click',()=>{
+  if(submissionOpenedFromHome){
+    submissionOpenedFromHome=false;
+    $('layout')?.classList.remove('submission-public');
+    document.querySelector('.hero')?.classList.remove('hidden');
+    $('loginScreen')?.classList.remove('hidden');
+  }else{
+    nav('listen');
+  }
+});
+$('addSecondTrack')?.addEventListener('change',event=>{
+  $('secondTrackFields')?.classList.toggle('hidden',!event.target.checked);
+  const second=$('secondTrackFields');
+  if(second){
+    second.querySelectorAll('input').forEach(input=>{
+      input.required=event.target.checked;
+    });
+  }
+});
+$('submitAnotherTrack')?.addEventListener('click',()=>{
+  $('submissionSuccess')?.classList.add('hidden');
+  $('musicSubmissionForm')?.classList.remove('hidden');
+  $('musicSubmissionForm')?.reset();
+  $('secondTrackFields')?.classList.add('hidden');
+  const message=$('submissionMessage');
+  if(message){message.textContent='';message.classList.remove('success');}
+});
+$('musicSubmissionForm')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const form=event.currentTarget;
+  const message=$('submissionMessage');
+  const button=$('submitMusicButton');
+  const files=[form.elements.track1_file.files[0],form.elements.track2_file.files[0]].filter(Boolean);
+  const maxSize=50*1024*1024;
+  if(files.some(file=>file.size>maxSize)){
+    message.textContent='Cada arquivo pode ter no máximo 50 MB.';
+    return;
+  }
+  if(files.length===2&&!$('addSecondTrack').checked){
+    message.textContent='Marque a opção de segunda faixa para incluir outro áudio.';
+    return;
+  }
+  message.textContent='Enviando seus dados e arquivos de áudio…';
+  message.classList.remove('success');
+  button.disabled=true;
+  button.textContent='Enviando…';
+  try{
+    const response=await fetch('/api/music-submissions',{method:'POST',body:new FormData(form)});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(result.error||'Não foi possível concluir o envio.');
+    form.classList.add('hidden');
+    $('submissionSuccess')?.classList.remove('hidden');
+    if(message){message.textContent='';message.classList.remove('success');}
+  }catch(error){
+    message.textContent=error.message||'Erro ao enviar. Tente novamente.';
+  }finally{
+    button.disabled=false;
+    button.textContent='Enviar minhas músicas ↗';
+  }
+});
 </script>
 <!--sites-preview-theme:start-->
 <style data-sites-preview-theme>:root{--site-primary:light-dark(#000000,#fff) !important;--site-background:light-dark(#ffffff,#000) !important;--site-on-background:light-dark(#000000,#fff) !important;--site-radius-scale:0.5 !important;--site-font-body:system-ui,sans-serif !important}
