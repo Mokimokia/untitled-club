@@ -1017,14 +1017,14 @@ async function syncBridgeLoginAdmin(fromLoginScreen = false) {
     syncBridgeNotice('Admin autenticado. Participantes, avaliações e faixas vêm do Supabase.');
   }catch(error){alert(error.message);}
 }
-$('loginAdminTrigger')?.addEventListener('click', () => syncBridgeLoginAdmin(true));
+
 let loginAdminClicks = 0;
 let loginAdminLastClick = 0;
 const loginAdminTrigger = $('loginAdminTrigger');
 if (loginAdminTrigger) {
   loginAdminTrigger.addEventListener('click', () => {
     const now = Date.now();
-    loginAdminClicks = now - loginAdminLastClick <= 2000 ? loginAdminClicks + 1 : 1;
+    loginAdminClicks = now - loginAdminLastClick <= 3000 ? loginAdminClicks + 1 : 1;
     loginAdminLastClick = now;
     if (loginAdminClicks === 4) {
       loginAdminClicks = 0;
