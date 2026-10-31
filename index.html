@@ -961,141 +961,177 @@ if ($('startTimer')) $('startTimer').onclick=()=>syncBridgeAction('start');
 if ($('pauseTimer')) $('pauseTimer').onclick=()=>syncBridgeAction('pause');
 if ($('addMinute')) $('addMinute').onclick=()=>syncBridgeAction('add_minute');
 if ($('continueBtn')) $('continueBtn').onclick=()=>{ $('saveMessage').textContent='Aguarde o administrador liberar a próxima faixa.'; };
-function comparisonPdfHex(value){
-  const special={"€":128,"‚":130,"ƒ":131,"„":132,"…":133,"†":134,"‡":135,"ˆ":136,"‰":137,"Š":138,"‹":139,"Œ":140,"Ž":142,"‘":145,"’":146,"“":147,"”":148,"•":149,"–":150,"—":151,"˜":152,"™":153,"š":154,"›":155,"œ":156,"ž":158,"Ÿ":159};
-  let hex='';
-  for(const char of String(value??'')){const cp=char.codePointAt(0);const byte=cp<=255?cp:(special[char]??63);hex+=byte.toString(16).padStart(2,'0').toUpperCase();}
-  return '<'+hex+'>';
-}
-function comparisonPdfText(x,y,size,value,color='0.08 0.08 0.08'){
-  return 'BT /F1 '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm '+comparisonPdfHex(value)+' Tj ET\n';
-}
-function comparisonPdfRect(x,y,w,h,color){
-  return 'q '+color+' rg '+x+' '+y+' '+w+' '+h+' re f Q\n';
-}
-function comparisonPdfFormat(value){
-  return value===null||value===undefined||!Number.isFinite(Number(value))?'—':fmt(Number(value));
-}
 function comparisonPdfMean(rows,field){
   const values=rows.map(row=>row[field]).filter(value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))).map(Number);
   return {value:values.length?values.reduce((sum,value)=>sum+value,0)/values.length:null,count:values.length};
 }
-function comparisonPdfBuild(pages){
-  const encoder=new TextEncoder();
-  const objects=[
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'
-  ];
-  const pageRefs=[];
-  pages.forEach((stream,index)=>{
-    const pageId=4+index*2,contentId=pageId+1;
-    pageRefs.push(pageId+' 0 R');
-    objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R >> >> /Contents '+contentId+' 0 R >>');
-    objects.push('<< /Length '+encoder.encode(stream).length+' >>\nstream\n'+stream+'endstream');
+function comparisonPdfCanvasText(ctx,value,x,y,size,color='#111111',weight=400,maxWidth){
+  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif;
+  ctx.fillStyle=color;
+  ctx.textBaseline='alphabetic';
+  ctx.fillText(String(value??''),x,y,maxWidth);
+}
+function comparisonPdfWrap(ctx,value,x,y,width,lineHeight,size,color='#111111',weight=400,maxLines=30){
+  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif;
+  ctx.fillStyle=color;ctx.textBaseline='alphabetic';
+  const words=String(value??'').split(/\s+/);let line='',lines=0;
+  for(const word of words){
+    const candidate=line?line+' '+word:word;
+    if(ctx.measureText(candidate).width>width&&line){
+      if(lines>=maxLines-1){ctx.fillText(line+'…',x,y);return y+lineHeight;}
+      ctx.fillText(line,x,y);y+=lineHeight;lines++;line=word;
+    }else line=candidate;
+  }
+  if(line&&lines<maxLines) {ctx.fillText(line,x,y);y+=lineHeight;}
+  return y;
+}
+function comparisonPdfFit(ctx,value,width,size,weight=400){
+  const text=String(value??'');
+  ctx.font=weight+' '+size+'px "Brut Gothic",Arial,sans-serif';
+  if(ctx.measureText(text).width<=width)return text;
+  let output=text;
+  while(output.length>1&&ctx.measureText(output+'…').width>width)output=output.slice(0,-1);
+  return output+'…';
+}
+function comparisonPdfCreateCanvas(){
+  const scale=3,canvas=document.createElement('canvas');
+  canvas.width=842*scale;canvas.height=595*scale;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw new Error('Seu navegador não conseguiu criar a página do PDF.');
+  ctx.scale(scale,scale);
+  ctx.fillStyle='#eee4cf';ctx.fillRect(0,0,842,595);
+  return {canvas,ctx};
+}
+function comparisonPdfJpeg(canvas){
+  return new Promise((resolve,reject)=>{
+    canvas.toBlob(async blob=>{
+      if(!blob){reject(new Error('Não foi possível renderizar uma página do PDF.'));return;}
+      try{resolve(new Uint8Array(await blob.arrayBuffer()));}
+      catch(error){reject(error);}
+    },'image/jpeg',0.96);
   });
-  objects[1]='<< /Type /Pages /Kids ['+pageRefs.join(' ')+'] /Count '+pages.length+' >>';
-  const chunks=[encoder.encode('%PDF-1.4\n')];let offset=chunks[0].length;const offsets=[0];
-  objects.forEach((object,index)=>{
-    offsets.push(offset);const bytes=encoder.encode((index+1)+' 0 obj\n'+object+'\nendobj\n');chunks.push(bytes);offset+=bytes.length;
-  });
+}
+async function comparisonPdfBuild(canvases){
+  const encoder=new TextEncoder(),objects=[];
+  objects.push(encoder.encode('<< /Type /Catalog /Pages 2 0 R >>'));
+  const pageIds=canvases.map((_,index)=>3+index*3);
+  objects.push(encoder.encode('<< /Type /Pages /Kids ['+pageIds.map(id=>id+' 0 R').join(' ')+'] /Count '+pageIds.length+' >>'));
+  for(let index=0;index<canvases.length;index++){
+    const pageId=3+index*3,imageId=pageId+1,contentId=pageId+2;
+    const jpeg=await comparisonPdfJpeg(canvases[index]);
+    objects.push(encoder.encode('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /XObject << /Im0 '+imageId+' 0 R >> >> /Contents '+contentId+' 0 R >>'));
+    objects.push({image:jpeg,width:canvases[index].width,height:canvases[index].height});
+    objects.push(encoder.encode('<< /Length 29 >>\nstream\nq 842 0 0 595 0 0 cm /Im0 Do Q\nendstream'));
+  }
+  const parts=[encoder.encode('%PDF-1.4\n')],offsets=[0];let offset=parts[0].length;
+  for(let index=0;index<objects.length;index++){
+    offsets.push(offset);
+    const header=encoder.encode((index+1)+' 0 obj\n');parts.push(header);offset+=header.length;
+    const object=objects[index];
+    if(object.image){
+      const before=encoder.encode('<< /Type /XObject /Subtype /Image /Width '+object.width+' /Height '+object.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+object.image.length+' >>\nstream\n');
+      const after=encoder.encode('\nendstream\nendobj\n');
+      parts.push(before,object.image,after);offset+=before.length+object.image.length+after.length;
+    }else{
+      const body=object,tail=encoder.encode('\nendobj\n');parts.push(body,tail);offset+=body.length+tail.length;
+    }
+  }
   const xrefOffset=offset;let xref='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';
-  for(let i=1;i<offsets.length;i++)xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  for(let index=1;index<offsets.length;index++)xref+=String(offsets[index]).padStart(10,'0')+' 00000 n \n';
   xref+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xrefOffset+'\n%%EOF';
-  chunks.push(encoder.encode(xref));
-  const length=chunks.reduce((sum,part)=>sum+part.length,0),result=new Uint8Array(length);let cursor=0;
-  chunks.forEach(part=>{result.set(part,cursor);cursor+=part.length;});
+  parts.push(encoder.encode(xref));
+  const size=parts.reduce((sum,part)=>sum+part.length,0),result=new Uint8Array(size);let cursor=0;
+  for(const part of parts){result.set(part,cursor);cursor+=part.length;}
   return result;
 }
-function downloadTrackComparisonPdf(track){
+async function downloadTrackComparisonPdf(track){
   if(!syncBridgeAdminAuthenticated||!syncBridgeAdminData){syncBridgeNotice('Entre no Admin para gerar o PDF comparativo.');return;}
-  const allRatings=syncBridgeAdminData.ratings||[];
-  const submitted=allRatings.filter(row=>row.is_submitted===true);
-  const referenceTracks=tracks.filter(item=>item.track_type==='reference'&&item.id!==track.id);
-  const visibleReferences=referenceTracks.slice(0,3);
-  const referenceIds=new Set(referenceTracks.map(item=>item.id));
-  const referenceRatings=submitted.filter(row=>referenceIds.has(row.track_id));
-  const trackRatings=submitted.filter(row=>row.track_id===track.id);
-  const rows=syncBridgeScoreFields.map((field,index)=>{
-    const selected=comparisonPdfMean(trackRatings,field);
-    const eachReference=visibleReferences.map(reference=>comparisonPdfMean(submitted.filter(row=>row.track_id===reference.id),field));
-    const aggregate=comparisonPdfMean(referenceRatings,field);
-    return {field,label:criteria[index]?.[0]||field,selected,eachReference,aggregate,difference:selected.value!==null&&aggregate.value!==null?selected.value-aggregate.value:null};
-  });
-  const overall=rows.find(row=>row.field==='overall')||rows[rows.length-1];
-  const sessionTracks=syncBridgeAdminData.tracks||[];
-  const internalComment=sessionTracks.find(item=>item.id===track.id)?.internal_comment||'';
-  const shortName=value=>String(value||'—').length>16?String(value).slice(0,15)+'…':String(value||'—');
-  const pages=[];
-  let stream='';
-  stream+=comparisonPdfRect(0,0,842,595,'0.965 0.929 0.850');
-  stream+=comparisonPdfRect(0,557,842,38,'0.898 0.145 0.118');
-  stream+=comparisonPdfText(40,571,16,'UNTITLED CLUB  /  RELATORIO COMPARATIVO','1 1 1');
-  stream+=comparisonPdfText(40,536,8,'DOCUMENTO INTERNO  ·  '+new Date().toLocaleDateString('pt-BR'),'0.34 0.30 0.24');
-  stream+=comparisonPdfText(40,510,22,track.name,'0.06 0.06 0.06');
-  stream+=comparisonPdfText(40,492,9,(track.track_type==='reference'?'FAIXA DE REFERENCIA':'MUSICA INEDITA')+'  ·  '+trackRatings.length+' AVALIACOES ENVIADAS','0.34 0.30 0.24');
-  const summaryCards=[
-    ['OVERALL DA FAIXA',comparisonPdfFormat(overall.selected.value)+'/5'],
-    ['MEDIA DAS REFERENCIAS',comparisonPdfFormat(overall.aggregate.value)+'/5'],
-    ['DIFERENCA',overall.difference===null?'—':(overall.difference>0?'+':'')+fmt(overall.difference)],
-    ['N DE AVALIACOES',String(trackRatings.length)+' / '+referenceRatings.length]
-  ];
-  summaryCards.forEach((card,index)=>{
-    const x=40+index*194;
-    stream+=comparisonPdfRect(x,432,180,46,'1 1 1');
-    stream+=comparisonPdfText(x+9,461,7,card[0],'0.38 0.34 0.27');
-    stream+=comparisonPdfText(x+9,441,14,card[1],index===2?'0.72 0.12 0.08':'0.06 0.06 0.06');
-  });
-  stream+=comparisonPdfText(40,414,8,'Media das referencias = media conjunta das avaliacoes enviadas em todas as faixas cadastradas como referencia.','0.34 0.30 0.24');
-  stream+=comparisonPdfText(40,401,8,'Diferenca = media da faixa selecionada menos media conjunta das referencias. Escala de 0 a 5.','0.34 0.30 0.24');
-  const widths=[142,108,94,94,94,112,78],tableWidth=widths.reduce((sum,width)=>sum+width,0),tableX=40,headerY=352,rowHeight=24;
-  stream+=comparisonPdfRect(tableX,headerY,tableWidth,29,'0.07 0.07 0.07');
-  const headers=['CRITERIO',shortName(track.name),...Array.from({length:3},(_,i)=>shortName(visibleReferences[i]?.name||'—')),'MEDIA REFS.','DIF.'];
-  let x=tableX;
-  headers.forEach((header,index)=>{stream+=comparisonPdfText(x+5,headerY+11,7,header,'1 1 1');x+=widths[index];});
-  rows.forEach((row,index)=>{
-    const y=headerY-(index+1)*rowHeight;
-    stream+=comparisonPdfRect(tableX,y,tableWidth,rowHeight,index%2===0?'0.99 0.97 0.92':'0.92 0.88 0.80');
-    const cells=[
-      row.label,
-      comparisonPdfFormat(row.selected.value),
-      ...Array.from({length:3},(_,i)=>comparisonPdfFormat(row.eachReference[i]?.value??null)),
-      comparisonPdfFormat(row.aggregate.value),
-      row.difference===null?'—':(row.difference>0?'+':'')+fmt(row.difference)
-    ];
-    x=tableX;
-    cells.forEach((cell,cellIndex)=>{
-      const value=String(cell),limit=cellIndex===0?23:15,shown=value.length>limit?value.slice(0,limit-1)+'…':value;
-      const color=cellIndex===6&&row.difference!==null&&row.difference>0?'0.72 0.12 0.08':'0.08 0.08 0.08';
-      stream+=comparisonPdfText(x+5,y+8,7.5,shown,color);x+=widths[cellIndex];
+  try{
+    const fontFaces=await document.fonts.load('14px "Brut Gothic"');
+    if(!fontFaces.length||!document.fonts.check('14px "Brut Gothic"'))throw new Error('A fonte Brut Gothic não carregou. Atualize o site e tente novamente.');
+    const allRatings=syncBridgeAdminData.ratings||[];
+    const submitted=allRatings.filter(row=>row.is_submitted===true);
+    const referenceTracks=tracks.filter(item=>item.track_type==='reference'&&item.id!==track.id);
+    const visibleReferences=referenceTracks.slice(0,3);
+    const referenceIds=new Set(referenceTracks.map(item=>item.id));
+    const referenceRatings=submitted.filter(row=>referenceIds.has(row.track_id));
+    const trackRatings=submitted.filter(row=>row.track_id===track.id);
+    const rows=syncBridgeScoreFields.map((field,index)=>{
+      const selected=comparisonPdfMean(trackRatings,field);
+      const eachReference=visibleReferences.map(reference=>comparisonPdfMean(submitted.filter(row=>row.track_id===reference.id),field));
+      const aggregate=comparisonPdfMean(referenceRatings,field);
+      return {field,label:criteria[index]?.[0]||field,selected,eachReference,aggregate,difference:selected.value!==null&&aggregate.value!==null?selected.value-aggregate.value:null};
     });
-  });
-  const tableBottom=headerY-rows.length*rowHeight;
-  stream+=comparisonPdfText(40,tableBottom-17,7,'N por criterio = quantidade de notas validas usadas em cada media. Valores sem avaliacao aparecem como travessao.','0.34 0.30 0.24');
-  stream+=comparisonPdfText(40,tableBottom-30,7,'Foram exibidas ate tres referencias individualmente; a media agrega todas as referencias cadastradas.','0.34 0.30 0.24');
-  stream+=comparisonPdfText(40,32,7,'UNTITLED CLUB  ·  RELATORIO INTERNO  ·  GERADO EM '+new Date().toLocaleString('pt-BR'),'0.34 0.30 0.24');
-  pages.push(stream);
-  if(internalComment.trim()){
-    let commentStream='';
-    commentStream+=comparisonPdfRect(0,0,842,595,'0.965 0.929 0.850');
-    commentStream+=comparisonPdfRect(0,557,842,38,'0.898 0.145 0.118');
-    commentStream+=comparisonPdfText(40,571,16,'UNTITLED CLUB  /  NOTAS INTERNAS','1 1 1');
-    commentStream+=comparisonPdfText(40,520,20,track.name,'0.06 0.06 0.06');
-    commentStream+=comparisonPdfText(40,491,10,'COMENTARIO PRIVADO DO ADMINISTRADOR','0.72 0.12 0.08');
-    const words=internalComment.trim().split(/\s+/);let line='',y=462;
-    for(const word of words){
-      const candidate=line?line+' '+word:word;
-      if(candidate.length>112&&line){commentStream+=comparisonPdfText(40,y,9,line,'0.08 0.08 0.08');y-=16;line=word;}
-      else line=candidate;
-      if(y<48)break;
+    const overall=rows.find(row=>row.field==='overall')||rows[rows.length-1];
+    const internalComment=(syncBridgeAdminData.tracks||[]).find(item=>item.id===track.id)?.internal_comment||'';
+    const pages=[];
+    const first=comparisonPdfCreateCanvas(),ctx=first.ctx;
+    ctx.fillStyle='#e52d24';ctx.fillRect(0,0,842,42);
+    comparisonPdfCanvasText(ctx,'UNTITLED CLUB  /  RELATÓRIO COMPARATIVO',40,27,17,'#fff7e8',700);
+    comparisonPdfCanvasText(ctx,'DOCUMENTO INTERNO  ·  '+new Date().toLocaleDateString('pt-BR'),40,66,9,'#5e584d',500);
+    comparisonPdfCanvasText(ctx,track.name,40,100,25,'#111111',700);
+    comparisonPdfCanvasText(ctx,(track.track_type==='reference'?'FAIXA DE REFERÊNCIA':'MÚSICA INÉDITA')+'  ·  '+trackRatings.length+' AVALIAÇÕES ENVIADAS',40,120,9,'#5e584d',500);
+    const cards=[
+      ['OVERALL DA FAIXA',comparisonPdfFormat(overall.selected.value)+'/5'],
+      ['MÉDIA DAS REFERÊNCIAS',comparisonPdfFormat(overall.aggregate.value)+'/5'],
+      ['DIFERENÇA',overall.difference===null?'—':(overall.difference>0?'+':'')+fmt(overall.difference)],
+      ['AVALIAÇÕES',String(trackRatings.length)+' / '+referenceRatings.length]
+    ];
+    cards.forEach((card,index)=>{
+      const x=40+index*194;
+      ctx.fillStyle='#f4ead4';ctx.fillRect(x,139,180,58);
+      ctx.strokeStyle='#171717';ctx.lineWidth=1.4;ctx.strokeRect(x,139,180,58);
+      comparisonPdfCanvasText(ctx,card[0],x+9,158,8,'#5e584d',700);
+      comparisonPdfCanvasText(ctx,card[1],x+9,185,17,index===2?'#e52d24':'#111111',700);
+    });
+    comparisonPdfCanvasText(ctx,'A média das referências agrega as avaliações enviadas de todas as faixas cadastradas como referência.',40,218,8,'#5e584d',400);
+    comparisonPdfCanvasText(ctx,'Diferença = média da faixa selecionada menos média conjunta das referências. Escala de 0 a 5.',40,232,8,'#5e584d',400);
+    const widths=[144,104,104,104,104,112,90],tableX=40,tableY=250,headH=31,rowH=25;
+    const headers=['CRITÉRIO',track.name,...Array.from({length:3},(_,i)=>visibleReferences[i]?.name||'—'),'MÉDIA REFS.','DIF.'];
+    ctx.fillStyle='#111111';ctx.fillRect(tableX,tableY,widths.reduce((a,b)=>a+b,0),headH);
+    let x=tableX;
+    headers.forEach((header,index)=>{
+      comparisonPdfCanvasText(ctx,comparisonPdfFit(ctx,header,widths[index]-10,8,700),x+5,tableY+20,8,'#fff7e8',700);
+      x+=widths[index];
+    });
+    rows.forEach((row,index)=>{
+      const y=tableY+headH+index*rowH;
+      ctx.fillStyle=index%2===0?'#f7efd9':'#e5d8bd';ctx.fillRect(tableX,y,widths.reduce((a,b)=>a+b,0),rowH);
+      ctx.strokeStyle='#b6a98e';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(tableX,y+rowH);ctx.lineTo(tableX+widths.reduce((a,b)=>a+b,0),y+rowH);ctx.stroke();
+      const cells=[row.label,comparisonPdfFormat(row.selected.value),...Array.from({length:3},(_,i)=>comparisonPdfFormat(row.eachReference[i]?.value??null)),comparisonPdfFormat(row.aggregate.value),row.difference===null?'—':(row.difference>0?'+':'')+fmt(row.difference)];
+      x=tableX;
+      cells.forEach((cell,cellIndex)=>{
+        const weight=cellIndex===0?700:500;
+        const color=cellIndex===6&&row.difference!==null&&row.difference>0?'#c52b22':'#171717';
+        comparisonPdfCanvasText(ctx,comparisonPdfFit(ctx,cell,widths[cellIndex]-10,8,weight),x+5,y+16,8,color,weight);
+        x+=widths[cellIndex];
+      });
+    });
+    const tableBottom=tableY+headH+rows.length*rowH;
+    comparisonPdfCanvasText(ctx,'N por critério = quantidade de notas válidas usadas em cada média. Valores sem avaliação aparecem como travessão.',40,tableBottom+23,8,'#5e584d',400);
+    comparisonPdfCanvasText(ctx,'Até três referências aparecem individualmente; a média agrega todas as referências cadastradas.',40,tableBottom+37,8,'#5e584d',400);
+    ctx.strokeStyle='#171717';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(40,565);ctx.lineTo(802,565);ctx.stroke();
+    comparisonPdfCanvasText(ctx,'UNTITLED CLUB  ·  RELATÓRIO INTERNO  ·  GERADO EM '+new Date().toLocaleString('pt-BR'),40,582,7,'#5e584d',500);
+    pages.push(first.canvas);
+    if(internalComment.trim()){
+      const note=comparisonPdfCreateCanvas(),noteCtx=note.ctx;
+      noteCtx.fillStyle='#e52d24';noteCtx.fillRect(0,0,842,42);
+      comparisonPdfCanvasText(noteCtx,'UNTITLED CLUB  /  NOTAS INTERNAS',40,27,17,'#fff7e8',700);
+      comparisonPdfCanvasText(noteCtx,track.name,40,94,24,'#111111',700);
+      comparisonPdfCanvasText(noteCtx,'COMENTÁRIO PRIVADO DO ADMINISTRADOR',40,123,10,'#e52d24',700);
+      comparisonPdfWrap(noteCtx,internalComment,40,157,760,18,11,'#171717',400,21);
+      noteCtx.strokeStyle='#171717';noteCtx.beginPath();noteCtx.moveTo(40,565);noteCtx.lineTo(802,565);noteCtx.stroke();
+      comparisonPdfCanvasText(noteCtx,'UNTITLED CLUB  ·  DOCUMENTO CONFIDENCIAL',40,582,7,'#5e584d',500);
+      pages.push(note.canvas);
     }
-    if(line&&y>=48)commentStream+=comparisonPdfText(40,y,9,line,'0.08 0.08 0.08');
-    commentStream+=comparisonPdfText(40,32,7,'UNTITLED CLUB  ·  DOCUMENTO CONFIDENCIAL','0.34 0.30 0.24');
-    pages.push(commentStream);
+    const bytes=await comparisonPdfBuild(pages);
+    const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob);
+    const slug=track.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const anchor=document.createElement('a');anchor.href=url;anchor.download='untitled-club-comparativo-'+(slug||'faixa')+'.pdf';document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+    syncBridgeNotice('PDF comparativo gerado com a fonte Brut Gothic.');
+  }catch(error){
+    syncBridgeNotice('Não foi possível gerar o PDF: '+error.message);
   }
-  const bytes=comparisonPdfBuild(pages),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob);
-  const slug=track.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  const anchor=document.createElement('a');anchor.href=url;anchor.download='untitled-club-comparativo-'+(slug||'faixa')+'.pdf';document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 $('previewTrackReport').onclick=()=>{
   if(!syncBridgeAdminData){
