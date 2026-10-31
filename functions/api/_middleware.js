@@ -118,6 +118,19 @@ export async function loadState(env) {
   };
 }
 
+export async function enforceRateLimit(request, env, scope, limit, windowSeconds) {
+  const ip = request.headers.get("CF-Connecting-IP") ||
+    (request.headers.get("X-Forwarded-For") || "").split(",")[0].trim() ||
+    "unknown";
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) throw new HttpError(503, "O controle de acesso ainda não está configurado.");
+  const key = await sha256Hex(env.SUPABASE_SERVICE_ROLE_KEY + ":" + scope + ":" + ip);
+  const allowed = await db(env, "rpc/consume_rate_limit", {
+    method: "POST",
+    body: JSON.stringify({ p_key: key, p_limit: limit, p_window_seconds: windowSeconds })
+  });
+  if (allowed !== true) throw new HttpError(429, "Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+}
+
 export async function sha256Hex(value) {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
