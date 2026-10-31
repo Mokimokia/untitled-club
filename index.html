@@ -62,7 +62,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
     <div class="eyebrow">UNTITLED CLUB · SUBMISSÕES</div>
     <h2>Envie suas músicas.</h2>
     <p class="muted">Apresente seu trabalho. Envie uma faixa ou, se quiser, compartilhe uma segunda.</p>
-    <div class="submission-intro">Preencha seus dados e anexe os arquivos de áudio. Os envios são recebidos de forma privada pela equipe do Untitled Club.</div>
+    <div class="submission-intro">Preencha seus dados e anexe os arquivos de áudio. Os envios são recebidos de forma privada pela equipe do Untitled Club. É permitido um envio por e-mail.</div>
     <form id="musicSubmissionForm" class="submission-form" enctype="multipart/form-data">
       <div class="submission-section">
         <div class="submission-section-head"><span>01 / PARTICIPANTE</span><span>SEUS DADOS</span></div>
@@ -1368,11 +1368,13 @@ $('backFromPublicSubmission')?.addEventListener('click',()=>{
   }
 });
 $('addSecondTrack')?.addEventListener('change',event=>{
-  $('secondTrackFields')?.classList.toggle('hidden',!event.target.checked);
+  const enabled=event.target.checked;
+  $('secondTrackFields')?.classList.toggle('hidden',!enabled);
   const second=$('secondTrackFields');
   if(second){
     second.querySelectorAll('input').forEach(input=>{
-      input.required=event.target.checked;
+      input.required=enabled;
+      if(!enabled){if(input.type==='file')input.value='';else input.value='';}
     });
   }
 });
