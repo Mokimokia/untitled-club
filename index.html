@@ -109,7 +109,11 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 </style>
 <style id="submission-first-paint-fix">
 /* Correções de renderização: evitar flash antes do estado do servidor e garantir a logo */
-html:not(.app-ready) #loginScreen{visibility:hidden!important}
+/* A tela de entrada permanece visível desde o primeiro paint; o conteúdo de avaliação aguarda o estado do servidor. */
+html:not(.app-ready) #loginScreen{visibility:visible!important;opacity:1!important}
+html:not(.app-ready) main>.hero,
+html:not(.app-ready) main>.layout{visibility:hidden!important}
+#loginScreen{isolation:isolate!important;background-color:#f1e6cf!important}
 #loginScreen.submission-mode #loginSoapLogo,
 html.submission-mode-preload #loginScreen #loginSoapLogo{
  display:block!important;visibility:visible!important;opacity:1!important;
