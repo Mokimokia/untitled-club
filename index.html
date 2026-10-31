@@ -36,9 +36,7 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 .report-tabs{display:flex;gap:8px;margin:18px 0}.report-tab{padding:10px 14px;border-radius:9px;border:1px solid #405057;background:#172228;color:#eef0ed;font-size:12px}.report-tab.active{background:var(--site-primary);color:#21180b;border-color:var(--site-primary);font-weight:800}
 .stars{flex-wrap:nowrap;gap:2px;align-items:center}.star{font-size:23px;width:25px;min-width:25px;height:32px;line-height:1;position:relative;padding:0;border:0;background:transparent;color:#47545a}.star.selected{color:#f3bd59}.star.zero-star{font-size:13px;width:27px;border:1px solid #47545a;border-radius:6px;margin-right:4px}.star.zero-star.selected{background:#f3bd59;color:#15191b;border-color:#f3bd59}
 @media(max-width:500px){.stars{gap:0}.star{width:24px;font-size:23px}}
-</style><link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto+Condensed:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</style>
 </head>
 <body><div id="app" data-sites-preview-theme="custom">
 <header class="topbar"><div class="brand" style="gap:0;letter-spacing:0"><img class="brand-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:clamp(150px,17vw,205px);height:auto;max-width:55vw;object-fit:contain"></div><div class="top-actions"><span class="pill" id="statusPill" aria-live="polite">● Conectando ao servidor…</span><span class="participant-label hidden" id="headerParticipant">Participante</span><button type="button" class="logout-btn hidden" id="logoutParticipant">SAIR</button></div></header>
@@ -1204,22 +1202,9 @@ main{max-width:1500px!important;padding:clamp(18px,3vw,42px) clamp(14px,3vw,42px
 </style>
 
 <style id="untitled-club-reference-fonts">
-:root{--site-font-body:"Roboto Condensed",Arial,sans-serif!important;--site-font-heading:"Anton","Arial Narrow",Impact,sans-serif!important}
-html,body,body *{font-family:"Roboto Condensed",Arial,sans-serif!important}
-h1,h2,h3,h4,h5,h6,
-.hero h1,.card h2,.card h3,.track-meta h2,.login-box h1,
-.timer-display,.timer-eyebrow,.criterion h3,.stat strong,.score,.rank,
-.navbtn,.btn,.mode,.pill,.tag,.eyebrow,.report-tab,.logout-btn,
-#openAdminFromLogin,.criterion .num,.star{
-  font-family:"Anton","Arial Narrow",Impact,sans-serif!important;
-  font-weight:400!important;
-  letter-spacing:.015em!important;
-}
-input,textarea,select,.field,.login-box label,.hero p,.muted,.small,.footnote,
-.participant-label,.timer-status,.criterion p,.scale,table,th,td{
-  font-family:"Roboto Condensed",Arial,sans-serif!important;
-}
-.login-box h1 small{font-family:"Roboto Condensed",Arial,sans-serif!important;font-weight:700!important}
+@font-face{font-family:'Brut Gothic';src:url('/assets/BrutGothic-Regular.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+:root{--site-font-body:'Brut Gothic',Arial,sans-serif!important;--site-font-heading:'Brut Gothic',Arial,sans-serif!important}
+html,body,body *{font-family:'Brut Gothic',Arial,sans-serif!important}
 </style>
 
 </body></html>
