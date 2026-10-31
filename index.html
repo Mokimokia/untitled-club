@@ -99,7 +99,9 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 <style id="submission-mode-styles">
 #openSubmissionFormHome{display:none!important}
 #loginScreen.submission-mode #openSubmissionFormHome{display:block!important}
-#loginScreen.submission-mode .login-box>*:not(#openSubmissionFormHome){display:none!important}
+#loginScreen.submission-mode .login-box>*:not(#loginAdminTrigger):not(#openSubmissionFormHome){display:none!important}
+#loginScreen.submission-mode #loginAdminTrigger{display:block!important;width:100%;margin-bottom:22px}
+#loginScreen.submission-mode #openSubmissionFormHome{margin-top:0!important}
 .submission-mode-admin{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}
 @media(max-width:620px){.submission-mode-admin{align-items:stretch;flex-direction:column}}
 </style>
@@ -166,7 +168,7 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 <section id="page-tracks" class="hidden"><div class="card"><div class="eyebrow">Administração</div><h2>Faixas e sessão</h2><p class="muted small">Gerencie faixas, código de entrada e fluxo da sessão compartilhada.</p><div id="trackAdminList"></div><div class="actions"><button class="btn" id="resetSession">Reabrir sessão</button><button class="btn primary" data-goto="dashboard">Voltar ao painel</button></div></div></section>
 <section id="page-participants" class="hidden"><div class="card"><h2>Participantes</h2><p class="muted small">Status e atividade sincronizados com a sessão compartilhada.</p><div id="participantRows"></div></div></section>
 <section id="page-reports" class="hidden"><div class="card"><div class="eyebrow">Exportação</div><h2>Relatórios internos</h2><p class="muted">Consulte os resultados agrupados por música ou veja o feedback de cada participante.</p><div class="report-tabs"><button class="report-tab active" id="reportByTrack">Por música</button><button class="report-tab" id="reportByPerson">Por participante</button></div><div id="reportTrackPanel"><label class="small muted" for="reportTrack">Música</label><select class="field" id="reportTrack"></select><button class="btn primary" style="margin-top:12px" id="previewTrackReport">Ver relatório da música</button></div><div id="reportPersonPanel" class="hidden"><label class="small muted" for="reportPerson">Participante</label><select class="field" id="reportPerson"></select><button class="btn primary" style="margin-top:12px" id="previewReport">Ver relatório do participante</button></div><button class="btn" style="margin-top:12px" id="exportCsv">Exportar ranking CSV</button><div id="reportPreview" class="hidden" style="margin-top:18px"></div></div></section>
-<section id="page-submissionsAdmin" class="hidden"><div class="card"><div class="eyebrow">RECEBIDOS PELO SITE</div><h2>Envios de músicas</h2><p class="muted small">Dados e arquivos enviados pelo formulário nativo do Untitled Club. Os links de áudio são privados e expiram após uma hora.</p><div id="musicSubmissionAdminList"><p class="muted small">Carregando envios…</p></div></div></section>
+<section id="page-submissionsAdmin" class="hidden"><div class="card"><div class="submission-admin-top"><div><div class="eyebrow">RECEBIDOS PELO SITE</div><h2>Envios de músicas</h2></div><button class="btn danger" id="clearMusicSubmissions" type="button">Limpar envios</button></div><p class="muted small">Dados e arquivos enviados pelo formulário nativo do Untitled Club. Os links de áudio são privados e expiram após uma hora.</p><div id="musicSubmissionAdminList"><p class="muted small">Carregando envios…</p></div></div></section>
 </div></div><footer class="footnote" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:9px;opacity:.78"><span style="display:flex;align-items:center;gap:5px"><span>Acesso</span><button type="button" class="mode active" id="artistMode" style="font-size:9px;padding:4px 7px">Participante</button><button type="button" class="mode hidden" id="adminMode" aria-hidden="true" tabindex="-1">Admin</button></span></footer>
 </main></div>
 <script>
@@ -1510,6 +1512,24 @@ async function renderMusicSubmissionsAdmin(){
     if(!response.ok)throw new Error(data.error||'Não foi possível carregar os envios.');
     host.replaceChildren();
     const rows=Array.isArray(data.submissions)?data.submissions:[];
+    const clearButton=$('clearMusicSubmissions');
+    if(clearButton){
+      clearButton.disabled=rows.length===0;
+      clearButton.onclick=async()=>{
+        if(!rows.length)return;
+        if(!window.confirm('Isso apagará permanentemente todos os envios e os arquivos de áudio armazenados. Esta ação não pode ser desfeita. Deseja continuar?'))return;
+        clearButton.disabled=true;clearButton.textContent='Apagando…';
+        try{
+          const result=await fetch('/api/music-submissions',{method:'DELETE',headers:{Accept:'application/json'}});
+          const payload=await result.json().catch(()=>({}));
+          if(!result.ok)throw new Error(payload.error||'Não foi possível limpar os envios.');
+          await renderMusicSubmissionsAdmin();
+        }catch(error){
+          clearButton.disabled=false;clearButton.textContent='Limpar envios';
+          alert(error.message||'Erro ao limpar os envios.');
+        }
+      };
+    }
     if(!rows.length){const empty=document.createElement('p');empty.className='muted small';empty.textContent='Nenhuma música enviada ainda.';host.appendChild(empty);return;}
     const fmtSize=value=>{const n=Number(value)||0;return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';};
     rows.forEach(row=>{
