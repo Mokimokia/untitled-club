@@ -119,9 +119,7 @@ export async function loadState(env) {
 }
 
 export async function enforceRateLimit(request, env, scope, limit, windowSeconds) {
-  const ip = request.headers.get("CF-Connecting-IP") ||
-    (request.headers.get("X-Forwarded-For") || "").split(",")[0].trim() ||
-    "unknown";
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   if (!env.SUPABASE_SERVICE_ROLE_KEY) throw new HttpError(503, "O controle de acesso ainda não está configurado.");
   const key = await sha256Hex(env.SUPABASE_SERVICE_ROLE_KEY + ":" + scope + ":" + ip);
   const allowed = await db(env, "rpc/consume_rate_limit", {
