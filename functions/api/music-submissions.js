@@ -87,13 +87,23 @@ async function signedDownload(env, path) {
 export async function onRequestGet({ request, env }) {
   try {
     if (!await hasAdminSession(request, env)) throw new HttpError(401, "Acesso restrito ao administrador.");
+    const url = new URL(request.url);
+    const downloadId = url.searchParams.get("download_id");
+    if (downloadId) {
+      const track = url.searchParams.get("track");
+      if (!/^[0-9a-f-]{36}$/i.test(downloadId) || !["1", "2"].includes(track)) {
+        throw new HttpError(400, "Solicitação de download inválida.");
+      }
+      const rows = await db(env, "music_submissions?id=eq." + encodeURIComponent(downloadId) +
+        "&select=track" + track + "_file_path&limit=1");
+      const path = Array.isArray(rows) && rows.length ? rows[0]["track" + track + "_file_path"] : null;
+      if (!path) throw new HttpError(404, "Arquivo de áudio não encontrado.");
+      const downloadUrl = await signedDownload(env, path);
+      if (!downloadUrl) throw new HttpError(502, "Não foi possível gerar o link temporário do áudio.");
+      return json({ url: downloadUrl });
+    }
     const rows = await db(env, "music_submissions?select=*&order=submitted_at.desc&limit=200");
-    const submissions = await Promise.all((Array.isArray(rows) ? rows : []).map(async row => ({
-      ...row,
-      track1_download_url: await signedDownload(env, row.track1_file_path),
-      track2_download_url: await signedDownload(env, row.track2_file_path)
-    })));
-    return json({ submissions });
+    return json({ submissions: Array.isArray(rows) ? rows : [] });
   } catch (error) {
     if (error instanceof HttpError) return json({ error: error.message }, error.status);
     return json({ error: "Não foi possível carregar os envios." }, 500);
