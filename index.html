@@ -80,7 +80,7 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
  letter-spacing:.12em!important;text-transform:uppercase!important;cursor:pointer!important;
  pointer-events:auto!important;position:relative!important;z-index:5!important;
 }
-.login-admin-trigger:hover{background:#e52b23!important;color:#fff5df!important}
+.login-admin-trigger:hover,.login-admin-trigger:active{background:#101010!important;color:#f1e6cf!important;transform:none!important;box-shadow:none!important;filter:none!important}\n.login-admin-trigger{transition:none!important;animation:none!important}
 </style>
 </style>
 </head>
@@ -1018,17 +1018,17 @@ async function syncBridgeLoginAdmin(fromLoginScreen = false) {
   }catch(error){alert(error.message);}
 }
 $('loginAdminTrigger')?.addEventListener('click', () => syncBridgeLoginAdmin(true));
-let secretAdminClicks = 0;
-let secretAdminLastClick = 0;
-const secretAdminTrigger = document.querySelector('.topbar .secret-admin-trigger');
-if (secretAdminTrigger) {
-  secretAdminTrigger.addEventListener('click', () => {
+let loginAdminClicks = 0;
+let loginAdminLastClick = 0;
+const loginAdminTrigger = $('loginAdminTrigger');
+if (loginAdminTrigger) {
+  loginAdminTrigger.addEventListener('click', () => {
     const now = Date.now();
-    secretAdminClicks = now - secretAdminLastClick <= 8000 ? secretAdminClicks + 1 : 1;
-    secretAdminLastClick = now;
-    if (secretAdminClicks >= 4) {
-      secretAdminClicks = 0;
-      secretAdminLastClick = 0;
+    loginAdminClicks = now - loginAdminLastClick <= 2000 ? loginAdminClicks + 1 : 1;
+    loginAdminLastClick = now;
+    if (loginAdminClicks === 4) {
+      loginAdminClicks = 0;
+      loginAdminLastClick = 0;
       syncBridgeLoginAdmin(true);
     }
   });
