@@ -1665,9 +1665,21 @@ async function renderMusicSubmissionsAdmin(){
         const heading=document.createElement('strong');heading.textContent='Faixa '+number+' · '+title;
         const details=document.createElement('p');details.className='muted small';details.textContent=[row['track'+number+'_artists'],row['track'+number+'_genre'],row['track'+number+'_file_name'],fmtSize(row['track'+number+'_file_size'])].filter(Boolean).join(' · ');
         section.append(heading,details);
-        const url=row['track'+number+'_download_url'];
-        if(url){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.className='btn';link.style.display='inline-flex';link.style.marginTop='8px';link.textContent='Baixar áudio ↗';section.append(link);}
-        else{const unavailable=document.createElement('span');unavailable.className='file-help';unavailable.textContent='Link de áudio indisponível';section.append(unavailable);}
+        const link=document.createElement('a');link.href='#';link.className='btn';link.style.display='inline-flex';link.style.marginTop='8px';link.textContent='Baixar áudio ↗';
+        link.addEventListener('click',async event=>{
+          event.preventDefault();
+          const tab=window.open('about:blank','_blank');
+          if(!tab){syncBridgeNotice('Permita pop-ups para abrir o download do áudio.');return;}
+          link.setAttribute('aria-busy','true');link.textContent='Preparando áudio…';
+          try{
+            const result=await fetch('/api/music-submissions?download_id='+encodeURIComponent(row.id)+'&track='+number,{headers:{Accept:'application/json'}});
+            const payload=await result.json().catch(()=>({}));
+            if(!result.ok||!payload.url)throw new Error(payload.error||'Não foi possível gerar o link do áudio.');
+            tab.location.replace(payload.url);
+          }catch(error){tab.close();syncBridgeNotice(error.message);}
+          finally{link.removeAttribute('aria-busy');link.textContent='Baixar áudio ↗';}
+        });
+        section.append(link);
         card.append(section);
       });
       host.appendChild(card);
