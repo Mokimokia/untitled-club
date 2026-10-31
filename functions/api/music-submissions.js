@@ -1,4 +1,4 @@
-import { db, json, HttpError, requireSameOrigin, hasAdminSession } from "./_middleware.js";
+import { db, json, HttpError, requireSameOrigin, hasAdminSession, enforceRateLimit } from "./_middleware.js";
 
 const BUCKET = "music-submissions";
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -114,6 +114,7 @@ export async function onRequestPost({ request, env }) {
   let uploaded = [];
   try {
     requireSameOrigin(request);
+    await enforceRateLimit(request, env, "music-submission", 3, 3600);
     const declaredLength = Number(request.headers.get("Content-Length") || 0);
     if (declaredLength > 105 * 1024 * 1024) throw new HttpError(413, "O envio excede o limite permitido.");
     const form = await request.formData();
