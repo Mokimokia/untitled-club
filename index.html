@@ -1021,7 +1021,8 @@ async function comparisonPdfBuild(canvases){
     const jpeg=await comparisonPdfJpeg(canvases[index]);
     objects.push(encoder.encode('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /XObject << /Im0 '+imageId+' 0 R >> >> /Contents '+contentId+' 0 R >>'));
     objects.push({image:jpeg,width:canvases[index].width,height:canvases[index].height});
-    objects.push(encoder.encode('<< /Length 29 >>\nstream\nq 842 0 0 595 0 0 cm /Im0 Do Q\nendstream'));
+    const pageStream='q 842 0 0 595 0 0 cm /Im0 Do Q\n';
+    objects.push(encoder.encode('<< /Length '+encoder.encode(pageStream).length+' >>\nstream\n'+pageStream+'endstream'));
   }
   const parts=[encoder.encode('%PDF-1.4\n')],offsets=[0];let offset=parts[0].length;
   for(let index=0;index<objects.length;index++){
@@ -1110,8 +1111,8 @@ async function downloadTrackComparisonPdf(track){
     const tableBottom=tableY+headH+rows.length*rowH;
     comparisonPdfCanvasText(ctx,'N por critério = quantidade de notas válidas usadas em cada média. Valores sem avaliação aparecem como travessão.',40,tableBottom+23,8,'#5e584d',400);
     comparisonPdfCanvasText(ctx,'Até três referências aparecem individualmente; a média agrega todas as referências cadastradas.',40,tableBottom+37,8,'#5e584d',400);
-    ctx.strokeStyle='#171717';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(40,565);ctx.lineTo(802,565);ctx.stroke();
-    comparisonPdfCanvasText(ctx,'UNTITLED CLUB  ·  RELATÓRIO INTERNO  ·  GERADO EM '+new Date().toLocaleString('pt-BR'),40,582,7,'#5e584d',500);
+    ctx.strokeStyle='#171717';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(40,575);ctx.lineTo(802,575);ctx.stroke();
+    comparisonPdfCanvasText(ctx,'UNTITLED CLUB  ·  RELATÓRIO INTERNO  ·  GERADO EM '+new Date().toLocaleString('pt-BR'),40,589,7,'#5e584d',500);
     pages.push(first.canvas);
     if(internalComment.trim()){
       const note=comparisonPdfCreateCanvas(),noteCtx=note.ctx;
@@ -1121,7 +1122,7 @@ async function downloadTrackComparisonPdf(track){
       comparisonPdfCanvasText(noteCtx,'COMENTÁRIO PRIVADO DO ADMINISTRADOR',40,123,10,'#e52d24',700);
       comparisonPdfWrap(noteCtx,internalComment,40,157,760,18,11,'#171717',400,21);
       noteCtx.strokeStyle='#171717';noteCtx.beginPath();noteCtx.moveTo(40,565);noteCtx.lineTo(802,565);noteCtx.stroke();
-      comparisonPdfCanvasText(noteCtx,'UNTITLED CLUB  ·  DOCUMENTO CONFIDENCIAL',40,582,7,'#5e584d',500);
+      comparisonPdfCanvasText(noteCtx,'UNTITLED CLUB  ·  DOCUMENTO CONFIDENCIAL',40,589,7,'#5e584d',500);
       pages.push(note.canvas);
     }
     const bytes=await comparisonPdfBuild(pages);
