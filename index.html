@@ -968,7 +968,10 @@ img,video,canvas,svg{max-width:100%}
 .submission-actions .btn{max-width:100%;white-space:normal}
 .admin-track-comment{max-width:100%}
 .admin-track-comment textarea{box-sizing:border-box;max-width:100%}
-@media(max-width:900px){
+@media(max-width:1024px){
+ .topbar{grid-template-columns:minmax(0,1fr) auto!important}
+ .topbar .brand{grid-column:1!important;justify-self:start!important;max-width:min(42vw,190px)!important}
+ .topbar .top-actions{grid-column:2!important;max-width:56vw!important}
  .layout{grid-template-columns:minmax(0,1fr)!important}
  .sidebar{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
  .navbtn{flex:0 0 auto}
