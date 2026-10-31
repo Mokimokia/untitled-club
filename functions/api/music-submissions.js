@@ -163,6 +163,4 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
-export async function onRequestGet() {
-  return json({ error: "Método não permitido." }, 405, { Allow: "POST" });
-}
+export async function onRequestPut() { return json({ error: "Método não permitido." }, 405, { Allow: "GET, POST" }); }
