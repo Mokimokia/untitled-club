@@ -961,6 +961,142 @@ if ($('startTimer')) $('startTimer').onclick=()=>syncBridgeAction('start');
 if ($('pauseTimer')) $('pauseTimer').onclick=()=>syncBridgeAction('pause');
 if ($('addMinute')) $('addMinute').onclick=()=>syncBridgeAction('add_minute');
 if ($('continueBtn')) $('continueBtn').onclick=()=>{ $('saveMessage').textContent='Aguarde o administrador liberar a próxima faixa.'; };
+function comparisonPdfHex(value){
+  const special={"€":128,"‚":130,"ƒ":131,"„":132,"…":133,"†":134,"‡":135,"ˆ":136,"‰":137,"Š":138,"‹":139,"Œ":140,"Ž":142,"‘":145,"’":146,"“":147,"”":148,"•":149,"–":150,"—":151,"˜":152,"™":153,"š":154,"›":155,"œ":156,"ž":158,"Ÿ":159};
+  let hex='';
+  for(const char of String(value??'')){const cp=char.codePointAt(0);const byte=cp<=255?cp:(special[char]??63);hex+=byte.toString(16).padStart(2,'0').toUpperCase();}
+  return '<'+hex+'>';
+}
+function comparisonPdfText(x,y,size,value,color='0.08 0.08 0.08'){
+  return 'BT /F1 '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm '+comparisonPdfHex(value)+' Tj ET\n';
+}
+function comparisonPdfRect(x,y,w,h,color){
+  return 'q '+color+' rg '+x+' '+y+' '+w+' '+h+' re f Q\n';
+}
+function comparisonPdfFormat(value){
+  return value===null||value===undefined||!Number.isFinite(Number(value))?'—':fmt(Number(value));
+}
+function comparisonPdfMean(rows,field){
+  const values=rows.map(row=>row[field]).filter(value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))).map(Number);
+  return {value:values.length?values.reduce((sum,value)=>sum+value,0)/values.length:null,count:values.length};
+}
+function comparisonPdfBuild(pages){
+  const encoder=new TextEncoder();
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'
+  ];
+  const pageRefs=[];
+  pages.forEach((stream,index)=>{
+    const pageId=4+index*2,contentId=pageId+1;
+    pageRefs.push(pageId+' 0 R');
+    objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R >> >> /Contents '+contentId+' 0 R >>');
+    objects.push('<< /Length '+encoder.encode(stream).length+' >>\nstream\n'+stream+'endstream');
+  });
+  objects[1]='<< /Type /Pages /Kids ['+pageRefs.join(' ')+'] /Count '+pages.length+' >>';
+  const chunks=[encoder.encode('%PDF-1.4\n')];let offset=chunks[0].length;const offsets=[0];
+  objects.forEach((object,index)=>{
+    offsets.push(offset);const bytes=encoder.encode((index+1)+' 0 obj\n'+object+'\nendobj\n');chunks.push(bytes);offset+=bytes.length;
+  });
+  const xrefOffset=offset;let xref='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';
+  for(let i=1;i<offsets.length;i++)xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  xref+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xrefOffset+'\n%%EOF';
+  chunks.push(encoder.encode(xref));
+  const length=chunks.reduce((sum,part)=>sum+part.length,0),result=new Uint8Array(length);let cursor=0;
+  chunks.forEach(part=>{result.set(part,cursor);cursor+=part.length;});
+  return result;
+}
+function downloadTrackComparisonPdf(track){
+  if(!syncBridgeAdminAuthenticated||!syncBridgeAdminData){syncBridgeNotice('Entre no Admin para gerar o PDF comparativo.');return;}
+  const allRatings=syncBridgeAdminData.ratings||[];
+  const submitted=allRatings.filter(row=>row.is_submitted===true);
+  const referenceTracks=tracks.filter(item=>item.track_type==='reference'&&item.id!==track.id);
+  const visibleReferences=referenceTracks.slice(0,3);
+  const referenceIds=new Set(referenceTracks.map(item=>item.id));
+  const referenceRatings=submitted.filter(row=>referenceIds.has(row.track_id));
+  const trackRatings=submitted.filter(row=>row.track_id===track.id);
+  const rows=syncBridgeScoreFields.map((field,index)=>{
+    const selected=comparisonPdfMean(trackRatings,field);
+    const eachReference=visibleReferences.map(reference=>comparisonPdfMean(submitted.filter(row=>row.track_id===reference.id),field));
+    const aggregate=comparisonPdfMean(referenceRatings,field);
+    return {field,label:criteria[index]?.[0]||field,selected,eachReference,aggregate,difference:selected.value!==null&&aggregate.value!==null?selected.value-aggregate.value:null};
+  });
+  const overall=rows.find(row=>row.field==='overall')||rows[rows.length-1];
+  const sessionTracks=syncBridgeAdminData.tracks||[];
+  const internalComment=sessionTracks.find(item=>item.id===track.id)?.internal_comment||'';
+  const shortName=value=>String(value||'—').length>16?String(value).slice(0,15)+'…':String(value||'—');
+  const pages=[];
+  let stream='';
+  stream+=comparisonPdfRect(0,0,842,595,'0.965 0.929 0.850');
+  stream+=comparisonPdfRect(0,557,842,38,'0.898 0.145 0.118');
+  stream+=comparisonPdfText(40,571,16,'UNTITLED CLUB  /  RELATORIO COMPARATIVO','1 1 1');
+  stream+=comparisonPdfText(40,536,8,'DOCUMENTO INTERNO  ·  '+new Date().toLocaleDateString('pt-BR'),'0.34 0.30 0.24');
+  stream+=comparisonPdfText(40,510,22,track.name,'0.06 0.06 0.06');
+  stream+=comparisonPdfText(40,492,9,(track.track_type==='reference'?'FAIXA DE REFERENCIA':'MUSICA INEDITA')+'  ·  '+trackRatings.length+' AVALIACOES ENVIADAS','0.34 0.30 0.24');
+  const summaryCards=[
+    ['OVERALL DA FAIXA',comparisonPdfFormat(overall.selected.value)+'/5'],
+    ['MEDIA DAS REFERENCIAS',comparisonPdfFormat(overall.aggregate.value)+'/5'],
+    ['DIFERENCA',overall.difference===null?'—':(overall.difference>0?'+':'')+fmt(overall.difference)],
+    ['N DE AVALIACOES',String(trackRatings.length)+' / '+referenceRatings.length]
+  ];
+  summaryCards.forEach((card,index)=>{
+    const x=40+index*194;
+    stream+=comparisonPdfRect(x,432,180,46,'1 1 1');
+    stream+=comparisonPdfText(x+9,461,7,card[0],'0.38 0.34 0.27');
+    stream+=comparisonPdfText(x+9,441,14,card[1],index===2?'0.72 0.12 0.08':'0.06 0.06 0.06');
+  });
+  stream+=comparisonPdfText(40,414,8,'Media das referencias = media conjunta das avaliacoes enviadas em todas as faixas cadastradas como referencia.','0.34 0.30 0.24');
+  stream+=comparisonPdfText(40,401,8,'Diferenca = media da faixa selecionada menos media conjunta das referencias. Escala de 0 a 5.','0.34 0.30 0.24');
+  const widths=[142,108,94,94,94,112,78],tableWidth=widths.reduce((sum,width)=>sum+width,0),tableX=40,headerY=352,rowHeight=24;
+  stream+=comparisonPdfRect(tableX,headerY,tableWidth,29,'0.07 0.07 0.07');
+  const headers=['CRITERIO',shortName(track.name),...Array.from({length:3},(_,i)=>shortName(visibleReferences[i]?.name||'—')),'MEDIA REFS.','DIF.'];
+  let x=tableX;
+  headers.forEach((header,index)=>{stream+=comparisonPdfText(x+5,headerY+11,7,header,'1 1 1');x+=widths[index];});
+  rows.forEach((row,index)=>{
+    const y=headerY-(index+1)*rowHeight;
+    stream+=comparisonPdfRect(tableX,y,tableWidth,rowHeight,index%2===0?'0.99 0.97 0.92':'0.92 0.88 0.80');
+    const cells=[
+      row.label,
+      comparisonPdfFormat(row.selected.value),
+      ...Array.from({length:3},(_,i)=>comparisonPdfFormat(row.eachReference[i]?.value??null)),
+      comparisonPdfFormat(row.aggregate.value),
+      row.difference===null?'—':(row.difference>0?'+':'')+fmt(row.difference)
+    ];
+    x=tableX;
+    cells.forEach((cell,cellIndex)=>{
+      const value=String(cell),limit=cellIndex===0?23:15,shown=value.length>limit?value.slice(0,limit-1)+'…':value;
+      const color=cellIndex===6&&row.difference!==null&&row.difference>0?'0.72 0.12 0.08':'0.08 0.08 0.08';
+      stream+=comparisonPdfText(x+5,y+8,7.5,shown,color);x+=widths[cellIndex];
+    });
+  });
+  const tableBottom=headerY-rows.length*rowHeight;
+  stream+=comparisonPdfText(40,tableBottom-17,7,'N por criterio = quantidade de notas validas usadas em cada media. Valores sem avaliacao aparecem como travessao.','0.34 0.30 0.24');
+  stream+=comparisonPdfText(40,tableBottom-30,7,'Foram exibidas ate tres referencias individualmente; a media agrega todas as referencias cadastradas.','0.34 0.30 0.24');
+  stream+=comparisonPdfText(40,32,7,'UNTITLED CLUB  ·  RELATORIO INTERNO  ·  GERADO EM '+new Date().toLocaleString('pt-BR'),'0.34 0.30 0.24');
+  pages.push(stream);
+  if(internalComment.trim()){
+    let commentStream='';
+    commentStream+=comparisonPdfRect(0,0,842,595,'0.965 0.929 0.850');
+    commentStream+=comparisonPdfRect(0,557,842,38,'0.898 0.145 0.118');
+    commentStream+=comparisonPdfText(40,571,16,'UNTITLED CLUB  /  NOTAS INTERNAS','1 1 1');
+    commentStream+=comparisonPdfText(40,520,20,track.name,'0.06 0.06 0.06');
+    commentStream+=comparisonPdfText(40,491,10,'COMENTARIO PRIVADO DO ADMINISTRADOR','0.72 0.12 0.08');
+    const words=internalComment.trim().split(/\s+/);let line='',y=462;
+    for(const word of words){
+      const candidate=line?line+' '+word:word;
+      if(candidate.length>112&&line){commentStream+=comparisonPdfText(40,y,9,line,'0.08 0.08 0.08');y-=16;line=word;}
+      else line=candidate;
+      if(y<48)break;
+    }
+    if(line&&y>=48)commentStream+=comparisonPdfText(40,y,9,line,'0.08 0.08 0.08');
+    commentStream+=comparisonPdfText(40,32,7,'UNTITLED CLUB  ·  DOCUMENTO CONFIDENCIAL','0.34 0.30 0.24');
+    pages.push(commentStream);
+  }
+  const bytes=comparisonPdfBuild(pages),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob);
+  const slug=track.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const anchor=document.createElement('a');anchor.href=url;anchor.download='untitled-club-comparativo-'+(slug||'faixa')+'.pdf';document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
 $('previewTrackReport').onclick=()=>{
   if(!syncBridgeAdminData){
     syncBridgeNotice('Entre no Admin para carregar os resultados reais.');
@@ -1025,6 +1161,12 @@ $('previewTrackReport').onclick=()=>{
       : '<p class="muted">Ainda não há avaliações ou rascunhos registrados para esta faixa.</p>');
   const styles='<style>.track-report-detail{min-width:1450px;font-size:11px}.track-report-detail th,.track-report-detail td{white-space:normal;vertical-align:top}.track-report-detail .report-comment{min-width:180px;max-width:280px;white-space:pre-wrap;overflow-wrap:anywhere}.report-criteria-table td,.report-criteria-table th{white-space:normal}.stats .stat strong{overflow-wrap:anywhere}@media print{#reportPreview .tablewrap{overflow:visible!important}.track-report-detail{min-width:0;font-size:8px}.track-report-detail th,.track-report-detail td{padding:4px;overflow-wrap:anywhere}.track-report-detail .report-comment{min-width:0;max-width:none}.track-report-detail tr{break-inside:avoid}#reportPreview .stats{display:flex;flex-wrap:wrap}#reportPreview .stat{flex:1;min-width:100px}}</style>';
   showReport('Relatório · '+escaped(track.name),styles+summary+details);
+  const printButton=$('reportPreview').querySelector('button[onclick*="window.print"]');
+  if(printButton)printButton.remove();
+  const pdfButton=document.createElement('button');
+  pdfButton.type='button';pdfButton.className='btn primary';pdfButton.textContent='Baixar PDF comparativo';pdfButton.style.marginTop='12px';
+  pdfButton.onclick=()=>downloadTrackComparisonPdf(track);
+  $('reportPreview').querySelector('.card')?.appendChild(pdfButton);
 };
 $('previewReport').onclick=()=>{
   if(!syncBridgeAdminData)return;
