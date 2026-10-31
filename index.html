@@ -1480,7 +1480,7 @@ $('exportCsv').onclick=()=>{
   const participants=new Map((syncBridgeAdminData.participants||[]).map(p=>[p.id,p.display_name]));
   (syncBridgeAdminData.ratings||[]).forEach(r=>{
     const track=tracks.find(t=>t.id===r.track_id);
-    rows.push([participants.get(r.participant_id)||'',track?.name||'',trackComments.get(r.track_id)||'',track?.type||'',r.initial_impression,r.melody,r.composition,r.production,r.vocal_performance,r.originality,r.emotional_connection,r.commercial_potential,r.replay_memorability,r.overall,r.liked||'',r.improve||'',r.is_submitted?'Sim':'Não']);
+    rows.push([participants.get(r.participant_id)||'',track?.name||'',trackComments.get(r.track_id)||'',track?.track_type||'',r.initial_impression,r.melody,r.composition,r.production,r.vocal_performance,r.originality,r.emotional_connection,r.commercial_potential,r.replay_memorability,r.overall,r.liked||'',r.improve||'',r.is_submitted?'Sim':'Não']);
   });
   const csv='\ufeff'+rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
