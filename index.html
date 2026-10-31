@@ -116,7 +116,7 @@ main>#page-submissions.submission-standalone>.submission-card{display:block!impo
 <section id="page-participants" class="hidden"><div class="card"><h2>Participantes</h2><p class="muted small">Status e atividade sincronizados com a sessão compartilhada.</p><div id="participantRows"></div></div></section>
 <section id="page-reports" class="hidden"><div class="card"><div class="eyebrow">Exportação</div><h2>Relatórios internos</h2><p class="muted">Consulte os resultados agrupados por música ou veja o feedback de cada participante.</p><div class="report-tabs"><button class="report-tab active" id="reportByTrack">Por música</button><button class="report-tab" id="reportByPerson">Por participante</button></div><div id="reportTrackPanel"><label class="small muted" for="reportTrack">Música</label><select class="field" id="reportTrack"></select><button class="btn primary" style="margin-top:12px" id="previewTrackReport">Ver relatório da música</button></div><div id="reportPersonPanel" class="hidden"><label class="small muted" for="reportPerson">Participante</label><select class="field" id="reportPerson"></select><button class="btn primary" style="margin-top:12px" id="previewReport">Ver relatório do participante</button></div><button class="btn" style="margin-top:12px" id="exportCsv">Exportar ranking CSV</button><div id="reportPreview" class="hidden" style="margin-top:18px"></div></div></section>
 <section id="page-submissionsAdmin" class="hidden"><div class="card"><div class="eyebrow">RECEBIDOS PELO SITE</div><h2>Envios de músicas</h2><p class="muted small">Dados e arquivos enviados pelo formulário nativo do Untitled Club. Os links de áudio são privados e expiram após uma hora.</p><div id="musicSubmissionAdminList"><p class="muted small">Carregando envios…</p></div></div></section>
-</div></div><footer class="footnote" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:9px;opacity:.78"><span style="display:flex;align-items:center;gap:5px"><span>Acesso</span><button type="button" class="mode active" id="artistMode" style="font-size:9px;padding:4px 7px">Participante</button></span></footer>
+</div></div><footer class="footnote" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:9px;opacity:.78"><span style="display:flex;align-items:center;gap:5px"><span>Acesso</span><button type="button" class="mode active" id="artistMode" style="font-size:9px;padding:4px 7px">Participante</button><button type="button" class="mode hidden" id="adminMode" aria-hidden="true" tabindex="-1">Admin</button></span></footer>
 </main></div>
 <script>
 const criteria=[
@@ -244,7 +244,7 @@ function nav(page){
 function switchMode(next){
   mode=next;
   $('artistMode').classList.toggle('active',next==='artist');
-  $('adminMode').classList.toggle('active',next==='admin');
+  $('adminMode')?.classList.toggle('active',next==='admin');
   $('sidebarArtist').classList.toggle('hidden',next!=='artist');
   $('sidebarAdmin').classList.toggle('hidden',next!=='admin');
   $('sessionTag').textContent=next==='artist'?'SESSÃO COMPARTILHADA · '+tracks.length+' FAIXAS':'PAINEL RESTRITO · ADMINISTRAÇÃO';
@@ -986,7 +986,8 @@ async function syncBridgeLoginAdmin(fromLoginScreen = false) {
     syncBridgeNotice('Admin autenticado. Participantes, avaliações e faixas vêm do Supabase.');
   }catch(error){alert(error.message);}
 }
-const secretAdminLogo = document.querySelector('.topbar .brand-logo');
+const secretAdminLogo = document.querySelector('.topbar .brand');
+if (secretAdminLogo) secretAdminLogo.style.cursor = 'pointer';
 let secretAdminClicks = 0;
 let secretAdminClickTimer = null;
 secretAdminLogo?.addEventListener('click', () => {
@@ -997,7 +998,7 @@ secretAdminLogo?.addEventListener('click', () => {
     syncBridgeLoginAdmin(true);
     return;
   }
-  secretAdminClickTimer = setTimeout(() => { secretAdminClicks = 0; }, 1400);
+  secretAdminClickTimer = setTimeout(() => { secretAdminClicks = 0; }, 2500);
 });
 $('artistMode').onclick=()=>switchMode('artist');
 $('submitRating').onclick=async()=>{
