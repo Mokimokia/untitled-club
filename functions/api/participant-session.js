@@ -55,10 +55,13 @@ export async function onRequestGet({ request, env }) {
   try {
     const session = await readSession(env);
     const participant = await authParticipant(request, env, session);
-    await db(env, "participants?id=eq." + encodeURIComponent(participant.id), {
-      method: "PATCH",
-      body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
-    });
+    const lastSeen = Date.parse(participant.last_seen_at || "");
+    if (!Number.isFinite(lastSeen) || Date.now() - lastSeen >= 15000) {
+      await db(env, "participants?id=eq." + encodeURIComponent(participant.id), {
+        method: "PATCH",
+        body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
+      });
+    }
     return json({ participant, state: await loadState(env), ratings: await getOwnRatings(env, session.id, participant.id) });
   } catch (error) {
     return json({ error: error?.message || "Não foi possível carregar as avaliações." }, error?.status || 500);
