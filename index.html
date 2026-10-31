@@ -36,7 +36,10 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 .report-tabs{display:flex;gap:8px;margin:18px 0}.report-tab{padding:10px 14px;border-radius:9px;border:1px solid #405057;background:#172228;color:#eef0ed;font-size:12px}.report-tab.active{background:var(--site-primary);color:#21180b;border-color:var(--site-primary);font-weight:800}
 .stars{flex-wrap:nowrap;gap:2px;align-items:center}.star{font-size:23px;width:25px;min-width:25px;height:32px;line-height:1;position:relative;padding:0;border:0;background:transparent;color:#47545a}.star.selected{color:#f3bd59}.star.zero-star{font-size:13px;width:27px;border:1px solid #47545a;border-radius:6px;margin-right:4px}.star.zero-star.selected{background:#f3bd59;color:#15191b;border-color:#f3bd59}
 @media(max-width:500px){.stars{gap:0}.star{width:24px;font-size:23px}}
-</style></head>
+</style><link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto+Condensed:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
 <body><div id="app" data-sites-preview-theme="custom">
 <header class="topbar"><div class="brand" style="gap:0;letter-spacing:0"><img class="brand-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:clamp(150px,17vw,205px);height:auto;max-width:55vw;object-fit:contain"></div><div class="top-actions"><span class="pill" id="statusPill" aria-live="polite">● Conectando ao servidor…</span><span class="participant-label hidden" id="headerParticipant">Participante</span><button type="button" class="logout-btn hidden" id="logoutParticipant">SAIR</button></div></header>
 <main>
@@ -1198,6 +1201,25 @@ main{max-width:1500px!important;padding:clamp(18px,3vw,42px) clamp(14px,3vw,42px
 @media(max-width:800px){main{padding:16px 12px 38px!important}.layout{grid-template-columns:1fr!important}.hero{padding:22px 18px!important;min-height:0!important;flex-direction:column!important;align-items:flex-start!important}.hero:before{right:-55px;top:-80px;width:180px;height:180px}.hero:after{right:-5px;bottom:-20px;width:42%;height:48%}.hero h1{font-size:clamp(38px,11vw,64px)!important}.hero p{max-width:78%!important}.sidebar{display:flex!important;gap:4px!important;overflow:auto!important;transform:none!important;padding:7px!important}.navbtn{width:auto!important;white-space:nowrap!important;padding:11px 10px!important;font-size:12px!important}.navicon{display:none!important}.track-head{align-items:flex-start!important;flex-wrap:wrap!important}.cover{width:96px!important;height:96px!important}.timer-panel{min-height:130px!important;padding:15px!important;gap:13px!important}.timer-dial{flex-basis:112px!important;width:112px!important}.timer-display{font-size:clamp(48px,11vw,70px)!important}.criteria{grid-template-columns:1fr!important}.criterion:last-child{grid-column:auto!important}.stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}.two-col{grid-template-columns:1fr!important}.topbar{padding:11px 12px!important;flex-wrap:wrap!important}.brand-logo{width:clamp(108px,38vw,150px)!important;max-height:42px!important}.top-actions{gap:7px!important}.participant-label{font-size:10px!important}.logout-btn{padding:7px 11px!important;font-size:10px!important}.login-box{max-height:93vh!important;padding:22px!important}.login-logo{max-height:95px!important;width:min(175px,62%)!important}.login-box h1{font-size:clamp(38px,10vw,54px)!important}.login-screen:before{left:-19vw;width:42vw}.login-screen:after{right:-20vw;width:48vw}.star{width:34px!important;min-width:34px!important;height:34px!important}}
 @media(max-width:420px){.hero p{max-width:100%!important}.hero:after{width:34%;height:34%}.timer-panel{align-items:center!important}.timer-dial{flex-basis:90px!important;width:90px!important}.timer-status{font-size:10px!important}.criteria{gap:9px!important}.criterion{padding:12px!important}.star{width:31px!important;min-width:31px!important;height:31px!important}.mode{padding:8px 10px!important;font-size:11px!important}.login-box{padding:18px!important}.login-box h1{font-size:36px!important}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+</style>
+
+<style id="untitled-club-reference-fonts">
+:root{--site-font-body:"Roboto Condensed",Arial,sans-serif!important;--site-font-heading:"Anton","Arial Narrow",Impact,sans-serif!important}
+html,body,body *{font-family:"Roboto Condensed",Arial,sans-serif!important}
+h1,h2,h3,h4,h5,h6,
+.hero h1,.card h2,.card h3,.track-meta h2,.login-box h1,
+.timer-display,.timer-eyebrow,.criterion h3,.stat strong,.score,.rank,
+.navbtn,.btn,.mode,.pill,.tag,.eyebrow,.report-tab,.logout-btn,
+#openAdminFromLogin,.criterion .num,.star{
+  font-family:"Anton","Arial Narrow",Impact,sans-serif!important;
+  font-weight:400!important;
+  letter-spacing:.015em!important;
+}
+input,textarea,select,.field,.login-box label,.hero p,.muted,.small,.footnote,
+.participant-label,.timer-status,.criterion p,.scale,table,th,td{
+  font-family:"Roboto Condensed",Arial,sans-serif!important;
+}
+.login-box h1 small{font-family:"Roboto Condensed",Arial,sans-serif!important;font-weight:700!important}
 </style>
 
 </body></html>
