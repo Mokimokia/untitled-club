@@ -42,6 +42,16 @@ main{max-width:1200px;margin:auto;padding:28px 22px 60px}.eyebrow{color:var(--si
 .stars{flex-wrap:nowrap;gap:2px;align-items:center}.star{font-size:23px;width:25px;min-width:25px;height:32px;line-height:1;position:relative;padding:0;border:0;background:transparent;color:#47545a}.star.selected{color:#f3bd59}.star.zero-star{font-size:13px;width:27px;border:1px solid #47545a;border-radius:6px;margin-right:4px}.star.zero-star.selected{background:#f3bd59;color:#15191b;border-color:#f3bd59}
 @media(max-width:500px){.stars{gap:0}.star{width:24px;font-size:23px}}
 </style>
+<style id="submission-layout-final">
+main{max-width:1600px!important;width:100%!important}
+main>#page-submissions.submission-standalone{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:1500px!important;margin:0 auto 32px!important;padding:0 clamp(16px,3vw,48px)!important}
+main>#page-submissions.submission-standalone>.submission-card{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:none!important;margin:0!important;padding:clamp(22px,4vw,48px)!important}
+#page-submissions .submission-form{display:block!important;width:100%!important;max-width:none!important}
+#page-submissions .submission-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 24px!important;width:100%!important}
+#page-submissions .submission-grid>label{min-width:0!important;width:100%!important}
+#page-submissions .submission-grid>label.full{grid-column:1/-1!important}
+@media(max-width:700px){main>#page-submissions.submission-standalone{padding:0 12px!important}#page-submissions .submission-grid{grid-template-columns:minmax(0,1fr)!important}#page-submissions .submission-grid>label.full{grid-column:1!important}}
+</style>
 </head>
 <body><div id="app" data-sites-preview-theme="custom">
 <header class="topbar"><div class="brand" style="gap:0;letter-spacing:0"><img class="brand-logo" src="/assets/untitled-club-logo.webp" alt="untitled Club" style="display:block;width:clamp(150px,17vw,205px);height:auto;max-width:55vw;object-fit:contain"></div><div class="top-actions"><span class="pill" id="statusPill" aria-live="polite">● Conectando ao servidor…</span><span class="participant-label hidden" id="headerParticipant">Participante</span><button type="button" class="logout-btn hidden" id="logoutParticipant">SAIR</button></div></header>
