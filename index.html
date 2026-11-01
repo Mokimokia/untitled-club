@@ -187,7 +187,7 @@ html.submission-mode-preload #loginScreen #openSubmissionFormHome{order:2!import
           <label>Nome da faixa *<input class="field" name="track1_name" required maxlength="160" placeholder="Título da música"></label>
           <label>Artistas *<input class="field" name="track1_artists" required maxlength="200" placeholder="Artista(s) e participações"></label>
           <label class="full">Gênero musical *<input class="field" name="track1_genre" required maxlength="100" placeholder="Ex.: Funk, House, Rap, Pop..."></label>
-          <label class="file-field full">Arquivo de áudio *<input class="field-file" type="file" name="track1_file" accept=".mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.opus,audio/*" required><span class="file-help">MP3, WAV, FLAC, AIFF, M4A, AAC, OGG ou OPUS · até 50 MB</span></label>
+          <label class="file-field full">Arquivo de áudio *<input class="field-file" type="file" name="track1_file" accept=".mp3,audio/mpeg" required><span class="file-help">Somente MP3 · até 50 MB</span></label>
         </div>
       </div>
       <div class="submission-section optional-track">
@@ -198,7 +198,7 @@ html.submission-mode-preload #loginScreen #openSubmissionFormHome{order:2!import
             <label>Nome da faixa<input class="field" name="track2_name" maxlength="160" placeholder="Título da segunda música"></label>
             <label>Artistas<input class="field" name="track2_artists" maxlength="200" placeholder="Artista(s) e participações"></label>
             <label class="full">Gênero musical<input class="field" name="track2_genre" maxlength="100" placeholder="Gênero musical"></label>
-            <label class="file-field full">Arquivo de áudio<input class="field-file" type="file" name="track2_file" accept=".mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.opus,audio/*"><span class="file-help">MP3, WAV, FLAC, AIFF, M4A, AAC, OGG ou OPUS · até 50 MB</span></label>
+            <label class="file-field full">Arquivo de áudio<input class="field-file" type="file" name="track2_file" accept=".mp3,audio/mpeg"><span class="file-help">Somente MP3 · até 50 MB</span></label>
           </div>
         </div>
       </div>
@@ -1523,6 +1523,10 @@ $('musicSubmissionForm')?.addEventListener('submit',async event=>{
   const button=$('submitMusicButton');
   const files=[form.elements.track1_file.files[0],form.elements.track2_file.files[0]].filter(Boolean);
   const maxSize=50*1024*1024;
+  if(files.some(file=>!/\\.mp3$/i.test(file.name))){
+    message.textContent="Formato não aceito. Envie somente arquivos .mp3.";
+    return;
+  }
   if(files.some(file=>file.size>maxSize)){
     message.textContent='Cada arquivo pode ter no máximo 50 MB.';
     return;
