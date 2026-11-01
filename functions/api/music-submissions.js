@@ -2,7 +2,7 @@ import { db, json, HttpError, requireSameOrigin, hasAdminSession, enforceRateLim
 
 const BUCKET = "music-submissions";
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set(["mp3", "wav", "flac", "aiff", "aif", "m4a", "aac", "ogg", "opus"]);
+const ALLOWED_EXTENSIONS = new Set(["mp3"]);
 
 function clean(value, max) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
@@ -22,7 +22,7 @@ async function uploadFile(env, file, submissionId, slot) {
   }
   const ext = fileExtension(file.name);
   if (!ALLOWED_EXTENSIONS.has(ext)) {
-    throw new HttpError(415, "Formato não aceito. Envie MP3, WAV, FLAC, AIFF, M4A, AAC, OGG ou OPUS.");
+    throw new HttpError(415, "Formato não aceito. Envie somente arquivos .mp3.");
   }
   const safeName = String(file.name || "audio").normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-100);
   const path = submissionId + "/" + slot + "-" + crypto.randomUUID() + "-" + safeName;
